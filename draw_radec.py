@@ -1,7 +1,8 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 """
-Test dipole fit p-values
+Draw random SNe redshifts 
 
 Note: The convention for spherical coordinates used here is
       azimuth (i.e. RA or l) first and then inclination (i.e. Dec or b).
