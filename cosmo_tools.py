@@ -4,7 +4,7 @@
 """
 Cosmology tools
 
-Author: Ulrich Feindt
+Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 """
 
 import numpy as np

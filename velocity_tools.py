@@ -9,18 +9,14 @@ Note: The convention for spherical coordinates used here is
       All angles are given in degrees within azimuths of -180 degrees and 180 degrees
       and inclinations between -90 degrees and 90 degrees.
 
-Author: Ulrich Feindt (unless noted otherwise)
+Author: Ulrich Feindt (feindt@physik.hu-berlin.de; unless noted otherwise)
 """
 
 
 import numpy as np
-#import matplotlib.pyplot as plt
-#import pycosmo as pc
-#import coords
 import cosmo_tools as ct
 import cPickle
 
-#from scipy.optimize import leastsq
 from copy import deepcopy
 
 from cosmo_tools import _O_M, _h, _d2r, _c
@@ -107,7 +103,7 @@ def load_supercluster():
     for RADec, dist, dense, diam in superclusters_raw:
         RA = float(RADec[:3])
         Dec = float(RADec[3:7])
-        superclusters += [coords.Position((RA,Dec)).galactic()+(dist/3e3,dense/sum_dense,diam/2)]
+        superclusters += [radec2gcs(RA,Dec)+(dist/3e3,dense/sum_dense,diam/2)]
 
     return superclusters
 
