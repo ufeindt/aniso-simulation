@@ -18,6 +18,7 @@ import sys
 
 from argparse import ArgumentParser
 
+import analysis_tools as at
 import cosmo_tools as ct
 import simulation_tools as st
 import velocity_tools as vt
@@ -137,11 +138,53 @@ def _get_peculiar_velocities(mode,p,l,b,z):
 
     return v_fcts[mode](p,l,b,z)
 
-def _simulate_aniso(names,l,b,z,v):
-    data, options, res = st.simulate_data(names,l,b,z,v=v)
+def _simulate_aniso(num_sim,names,l,b,z,v):
+    results = {'dipole': {},
+               'dipole+shear': {},
+               'dipole+shear_trless': {},
+               'sr_90': {},
+               'sr_45': {},
+               'sr_22.5:': {},
+               'sr_nw_90': {},
+               'sr_nw_45': {},
+               'sr_nw_22.5:': {}}
 
-    sys.exit()
+    analysis_fcts = {'dipole': at.fit_dipole,
+                     'dipole+shear': at.fit_dipole_shear,
+                     'dipole+shear_trless': at.fit_dipole_shear_trless,
+                     'sr_90': (lambda data,options: at.get_sr_min_max(data,option,delta=90)),
+                     'sr_45': (lambda data,options: at.get_sr_min_max(data,option,delta=45)),
+                     'sr_22.5:': (lambda data,options: at.get_sr_min_max(data,option,
+                                                                         delta=22.5)),
+                     'sr_nw_90': (lambda data,options: at.get_sr_min_max(data,option,delta=90,
+                                                                         weighted=False)),
+                     'sr_nw_45': (lambda data,options: at.get_sr_min_max(data,option,delta=45,
+                                                                         weighted=False)),
+                     'sr_nw_22.5:': (lambda data,options: at.get_sr_min_max(data,option,
+                                                                            delta=22.5,
+                                                                            weighted=False))}
+    
+    for k in xrange(num_sim):
+        data, options, res = st.simulate_data(names,l,b,z,v=v)
+        for key in sorted(results.keys()):
+            tmp = analysis_fct[key](data,options)
+            for skey in tmp.keys():
+                if skey not in results[key].keys():
+                    if type(tmp[skey]) == list:
+                        results[key][skey] = tmp[skey]
+                    elif type(tmp[skey]) == float:
+                        results[key][skey] = np.array([tmp[skey]])
+                    else:
+                        raise TypeError('Output of analysis functions must be a dictionary of lists and floats.')
+                else:
+                    if type(tmp[skey]) == list:
+                        results[key][skey].extend(tmp[skey])
+                    elif type(tmp[skey]) == float:
+                        results[key][skey] = np.append(results[key][skey],tmp[skey])
+                    else:
+                        raise TypeError('Output of analysis functions must be a dictionary of lists and floats.')
 
+    return results
 
 def _save_results(results,outfile):
     pass
