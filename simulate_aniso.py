@@ -77,9 +77,11 @@ def _process_args(args):
 
     if args.outdir is None:
         args.outdir = 'results/'
-    messages.append('Output dir: {}'.format(args.outdir))
+    elif args.outdir[-1] != '/':
+        args.outdir = '{}/'.format(args.outdir)
+    messages.append('Output dir: {}'.format(args.outdir[:-1]))
    
-    if args.outdir != '' and not os.path.exists(args.outdir):
+    if not os.path.exists(args.outdir):
         os.makedirs(args.outdir)
 
     if args.signal_mode not in range(6):
@@ -98,8 +100,45 @@ def _process_args(args):
     
     return args
 
+def _make_outfile_name(args):
+    if args.short_name is None:
+        outfile = '_'.join(args.files)
+    else:
+        outfile = args.short_name
+
+    outfile = '{}_s{}_{:.3f}_{:.3f}'.format(outfile,args.signal_mode,*args.redshift)
+    
+    outfile = '{}.pkl'.format(outfile.replace('.',''))
+
+    return outfile
+
 def _load_coordinates(*filenames):
-    pass
+    out = ([],[],[],[])
+    for filename in filenames:
+        f = file(filename,'r')
+        data = [line.split() for line in f if line[0] != '#']
+        f.close()
+        
+        out[0].extend([a[0] for a in data])
+        for k in range(1,4):
+            out[k].extend([float(a[k]) for a in data])
+
+        return (np.array(a) for a in out)
+
+def _get_peculiar_velocities(mode,p,l,b,z):
+    v_fcts = {0: (lambda p_,l_,b_,z_: 
+                  np.zeros(len(z_))),
+              1: (lambda p_,l_,b_,z_: 
+                  np.array(map(lambda x1,x2: p_.dot(vt.v_dipole_comp(x1,x2)),l_,b_))),
+              2: (lambda p_,l_,b_,z_: 
+                  np.array(map(lambda x1,x2,x3: p_.dot(vt.v_tidal_comp(x1,x2,x3)),z_,l_,b_)))}
+    if mode > 2:
+        raise ValueError('Signal mode not implemented yet.')
+
+    return v_fcts[mode](p,l,b,z)
+
+def _simulate_aniso(Names,RA,Dec,z,v):
+    data, options = st.simulate_data(Name,RA,Dec,z,v=v)
 
 def _save_results(results,outfile):
     pass
@@ -108,6 +147,18 @@ def _main():
     parser = _def_parser()
     args = parser.parse_args()
     args = _process_args(args)
+
+    outfile = _make_outfile_name(args)
+
+    Names, RA, Dec, z = _load_coordinates(*args.files)
+    l, b = ct.radec2gcs(RA, Dec)
+
+    v = _get_peculiar_velocities(args.signal_mode,args.parameters,l,b,z)
+    sys.exit()
+
+    results = _simulate_aniso(Names,RA,Dec,z,v)
+
+    _save_results(results,'{}{}'.format(args.outdir,outfile))
 
 if __name__ == '__main__':
     _main()

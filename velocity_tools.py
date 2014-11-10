@@ -25,18 +25,6 @@ from cosmo_tools import _O_M, _h, _d2r, _c
 # -- Velocity components -- #
 # ------------------------- #
 
-def dipole_comp(l,b):
-    """
-    Dipole components
-
-    Arguments:
-    l,b -- angular coordinates in degrees 
-    """
-    out = (np.cos(b*_d2r) * np.cos(l*_d2r),
-           np.cos(b*_d2r) * np.sin(l*_d2r),
-           np.sin(b*_d2r))
-    return out
-
 def ang_sep(l1,b1,l2,b2):
     """
     Angular separation between two positions on the sky 
@@ -119,6 +107,18 @@ def v_attractor(z,l,b,od_factors,O_M=_O_M,H_0=_h):
                       H_0=H_0)
 
     return v
+
+def v_dipole_comp(l,b):
+    """
+    Dipole components
+
+    Arguments:
+    l,b -- angular coordinates in degrees 
+    """
+    out = (np.cos(b*_d2r) * np.cos(l*_d2r),
+           np.cos(b*_d2r) * np.sin(l*_d2r),
+           np.sin(b*_d2r))
+    return out
 
 def v_tidal_comp(z,l,b,O_M=_O_M,H_0=_h):
     '''
