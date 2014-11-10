@@ -15,7 +15,7 @@ Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 import numpy as np
 
 import cosmo_tools as ct
-from cosmo_tools import _d2r
+from cosmo_tools import _d2r, _O_M, _h, _c
 
 def simulate_l_b_coverage(Npoints,MW_exclusion=10,ra_range=(-180,180),dec_range=(-90,90),
                           output_frame='galactic'):
@@ -110,3 +110,35 @@ def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
 
     return z
          
+def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_h,v_dispersion=0,
+                  intrinsic_dispersion=0.1,error_distribution=(0.1,0.02),
+                  error_min=0.03):
+    """
+    """
+    if v is None:
+        v = np.zeros(len(z)) 
+
+    z4mu = z + v/_c
+    if v_dispersion > 0:
+        z4mu += np.random.normal(0,v_dispersion,len(z))
+    
+    mu = np.array([ct.mu(z_,O_M=O_M,H_0=H_0) for z_ in z4mu])
+    
+    dmu = np.random.normal(error_distribution[0],error_distribution[1],len(z))
+
+    for k in xrange(len(z)):
+        while dmu[k] <= error_min:
+            dmu[k] = np.random.normal(error_distribution[0],error_distribution[1])
+
+        mu[k] += np.random.normal(0,np.sqrt(dmu[k]**2 + intrinsic_dispersion**2))
+        
+    data = [zip(names,z,mu,dmu,l,b)]
+    options = {'O_L':None,'w':-1,'dM':0,'H_0':H_0,'O_M':O_M}
+    fit, options = ct.fit_w_sig_int([0], data, options)
+    options['offsets'] = fit[0]
+
+    res = []
+    for subset in data:
+        res.append(ct.residuals([],[subset],options))
+        
+    return data, options, res

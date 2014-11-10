@@ -137,8 +137,11 @@ def _get_peculiar_velocities(mode,p,l,b,z):
 
     return v_fcts[mode](p,l,b,z)
 
-def _simulate_aniso(Names,RA,Dec,z,v):
-    data, options = st.simulate_data(Name,RA,Dec,z,v=v)
+def _simulate_aniso(names,l,b,z,v):
+    data, options, res = st.simulate_data(names,l,b,z,v=v)
+
+    sys.exit()
+
 
 def _save_results(results,outfile):
     pass
@@ -150,14 +153,14 @@ def _main():
 
     outfile = _make_outfile_name(args)
 
-    Names, RA, Dec, z = _load_coordinates(*args.files)
+    names, RA, Dec, z = _load_coordinates(*args.files)
     l, b = ct.radec2gcs(RA, Dec)
 
     v = _get_peculiar_velocities(args.signal_mode,args.parameters,l,b,z)
-    sys.exit()
 
-    results = _simulate_aniso(Names,RA,Dec,z,v)
-
+    results = _simulate_aniso(names,l,b,z,v)
+    #sys.exit()
+    
     _save_results(results,'{}{}'.format(args.outdir,outfile))
 
 if __name__ == '__main__':
