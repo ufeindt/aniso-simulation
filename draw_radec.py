@@ -65,7 +65,7 @@ def _process_args(args):
         messages.append('RA range: {:.1f} deg -- {:.1f} deg'.format(*args.ra_range))
 
     if args.dec_range is None:
-        args.dec_range = [-180.,180.]
+        args.dec_range = [-90.,90.]
         messages.append('Dec range: {:.1f} deg -- {:.1f} deg (default)'.format(*args.dec_range))
     elif (args.dec_range[0] < -90 or args.dec_range[1] > 90 
           or args.dec_range[0] >  args.dec_range[1]):
