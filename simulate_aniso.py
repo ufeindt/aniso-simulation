@@ -113,16 +113,20 @@ def _make_outfile_name(args):
 
     return outfile
 
-def _load_coordinates(*filenames):
+def _load_coordinates(*filenames,**kwargs):
+    z_range = kwargs.pop('z_range',(0.015,0.1))
+
     out = ([],[],[],[])
     for filename in filenames:
         f = file(filename,'r')
         data = [line.split() for line in f if line[0] != '#']
         f.close()
         
-        out[0].extend([a[0] for a in data])
+        out[0].extend([a[0] for a in data 
+                       if float(a[3]) >= z_range[0] and float(a[3]) < z_range[1]])
         for k in range(1,4):
-            out[k].extend([float(a[k]) for a in data])
+            out[k].extend([float(a[k]) for a in data
+                           if float(a[3]) >= z_range[0] and float(a[3]) < z_range[1]])
 
         return (np.array(a) for a in out)
 
@@ -196,7 +200,7 @@ def _main():
 
     outfile = _make_outfile_name(args)
 
-    names, RA, Dec, z = _load_coordinates(*args.files)
+    names, RA, Dec, z = _load_coordinates(*args.files,z_range=args.redshift)
     l, b = ct.radec2gcs(RA, Dec)
 
     v = _get_peculiar_velocities(args.signal_mode,args.parameters,l,b,z)
