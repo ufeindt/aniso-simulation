@@ -14,7 +14,6 @@ Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 
 import numpy as np
 import os
-import sys
 
 from argparse import ArgumentParser
 
@@ -107,6 +106,10 @@ def _process_args(args):
         args.outfile = '{}.dat'.format(args.name)
     messages.append('Output file: {}'.format(args.outfile))
 
+    outdir = '/'.join(args.outfile.split('/')[:-1])
+    if outdir != '' and not os.path.exists(outdir):
+        os.makedirs(outdir)
+
     if args.verbose:
         print '\n'.join(messages)
     
@@ -122,10 +125,6 @@ def _main():
     parser = _def_parser()
     args = parser.parse_args()
     args = _process_args(args)
-    
-    outdir = '/'.join(args.outfile.split('/')[:-1])
-    if outdir != '' and not os.path.exists(outdir):
-        os.makedirs(outdir)
 
     RA, Dec = st.simulate_l_b_coverage(args.number,args.zone_of_avoidance,
                                        args.ra_range,args.dec_range,'j2000')
