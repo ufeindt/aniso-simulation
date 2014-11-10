@@ -248,7 +248,7 @@ def convert_to_eig_val_base(fit,cov):
 
     M = get_eigval_transform(eig_vecs)
     fit_eig = M.dot(fit[:9])
-    cov_eig = M.dot(cov[:9,:9].dot(M.T)
+    cov_eig = M.dot(cov[:9,:9].dot(M.T))
         
     d_eig = get_distance_estimates(fit_eig[:6],cov_eig[:6,:6])
     eig_vec_sph = [convert_spherical(eig_vecs[k]) for k in xrange(3)]
@@ -385,7 +385,7 @@ def remove_tr(fit,cov):
 
     return J.dot(fit),  J.dot(cov.dot(J.T))
 
-def add_shear_z(fit,cov)
+def add_shear_z(fit,cov):
     """
     Add the z_component to shear matrix without monopole
     Expects fit results for bulk flow + shear (traceless)
@@ -403,7 +403,7 @@ def add_shear_z(fit,cov)
 
     return J.dot(fit),  J.dot(cov.dot(J.T))
 
-    def reshape_shear_matrix(flat_shear,offset=0):
+def reshape_shear_matrix(flat_shear,offset=0):
     """
     Reshape flattened shear (array of length 6: U_xx, U_yy, U_zz, U_xy, U_xz, U_yz) to matrix.
     """
@@ -411,6 +411,10 @@ def add_shear_z(fit,cov)
                           [3,1,5],
                           [4,5,2]])
     return flat_shear[shear_idx+offset]
+
+def flatten_shear_matrix(shear):
+    shear_idx = np.array([0,4,8,1,2,5])
+    return shear.flatten()[shear_idx]
 
 # -------------------------- #
 # -- Conversion functions -- #
