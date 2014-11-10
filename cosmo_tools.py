@@ -4,7 +4,12 @@
 """
 Cosmology tools
 
-Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
+Note: The convention for spherical coordinates used here is
+      azimuth (i.e. RA or l) first and then inclination (i.e. Dec or b).
+      All angles are given in degrees within azimuths of -180 degrees and 180 degrees
+      and inclinations between -90 degrees and 90 degrees.
+
+Author: Ulrich Feindt (feindt@physik.hu-berlin.de; unless noted otherwise)
 """
 
 import numpy as np
@@ -202,3 +207,70 @@ def fit_w_sig_int(initial, data, options, sig_int_step=0.1, tol=1e-3):
     #print chi2, residual_chi2(fit[0],data,options)
 
     return fit, options
+
+# -------------------------------- #
+# ----  FROM THE SNf ToolBox ----- #
+# -------------------------------- #
+
+def radec2gcs(ra, dec, deg=True):
+    """
+    Authors: Yannick Copin (ycopin@ipnl.in2p3.fr)
+    
+    Convert *(ra,dec)* equatorial coordinates (J2000, in degrees if
+    *deg*) to Galactic Coordinate System coordinates *(lII,bII)* (in
+    degrees if *deg*).
+
+    Sources:
+
+    - http://www.dur.ac.uk/physics.astrolab/py_source/conv.py_source
+    - Rotation matrix from
+      http://www.astro.rug.nl/software/kapteyn/celestialbackground.html
+
+    .. Note:: This routine is only roughly accurate, probably at the
+              arcsec level, and therefore not to be used for
+              astrometric purposes. For most accurate conversion, use
+              dedicated `kapteyn.celestial.sky2sky` routine.
+
+    >>> radec2gal(123.456, 12.3456)
+    (210.82842704243518, 23.787110745502183)
+    """
+
+    if deg:
+        ra  =  ra * _d2r
+        dec = dec * _d2r
+
+    rmat = np.array([[-0.054875539396, -0.873437104728, -0.48383499177 ],
+                    [ 0.494109453628, -0.444829594298,  0.7469822487  ],
+                    [-0.867666135683, -0.198076389613,  0.455983794521]])
+    cosd = np.cos(dec)
+    v1 = np.array([np.cos(ra)*cosd,
+                  np.sin(ra)*cosd,
+                  np.sin(dec)])
+    v2 = np.dot(rmat, v1)
+    x,y,z = v2
+
+    c,l = rec2pol(x,y)
+    r,b = rec2pol(c,z)
+
+    assert np.allclose(r,1), "Precision error"
+
+    if deg:
+        l /= _d2r
+        b /= _d2r
+
+    return l, b
+
+def rec2pol(x,y, deg=False):
+    """
+    Authors: Yannick Copin (ycopin@ipnl.in2p3.fr)
+    
+    Conversion of rectangular *(x,y)* to polar *(r,theta)*
+    coordinates
+    """
+
+    r = np.hypot(x,y)
+    t = np.arctan2(y,x)
+    if deg:
+        t /= RAD2DEG
+
+    return r,t
