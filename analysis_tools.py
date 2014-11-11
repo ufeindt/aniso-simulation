@@ -198,7 +198,13 @@ def fit_dipole_shear_trless(data,options):
 
     return results
 
-def get_Q_min_max(l_res,b_res,res,delta=90,l_grid=None,b_grid=None,full_opt=True,weighted=True):
+def get_Q_min_max(data,options,delta=90,l_grid=None,b_grid=None,full_opt=True,weighted=True):
+    """
+    """
+    l_res = np.array([a[4] for b in data for a in b])
+    b_res = np.array([a[5] for b in data for a in b])
+    res = ct.residuals([],[subset],options)
+
     if l_grid is None and b_grid is None:
         n_grid = int(180./delta)
         l_grid = np.linspace(-180,180,2*n_grid+2)[:-1]
