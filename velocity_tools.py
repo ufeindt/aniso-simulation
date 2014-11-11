@@ -69,7 +69,7 @@ def velocity(z,l,b,z_A,l_A,b_A,R_A,delta,O_M=_O_M,H_0=_h):
     
     return out * vec_components
 
-def load_supercluster():
+def load_superclusters():
     sgw_factor = 46.11
 
     superclusters_raw = [('184+003+007',230.3,14.16,56.9),
@@ -99,6 +99,8 @@ def v_attractor(z,l,b,od_factors,O_M=_O_M,H_0=_h):
     '''
     velocity field for SSC + SGW
     '''
+    superclusters = load_superclusters()
+
     z_A1, l_A1, b_A1, R_A1 = 0.046, 306.4, 29.7, 50
     v = velocity(z,l,b,z_A1,l_A1,b_A1,R_A1,od_factors[0],O_M=O_M,H_0=H_0)
 

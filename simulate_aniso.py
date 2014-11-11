@@ -33,8 +33,7 @@ signal_modes = ['0: no signal',
                 '1: dipole, 3 parameters (U_x,U_y,U_z)',
                 '2: dipole + shear, 9 parameters (U_x,U_y,U_z,U_xx,U_yy,U_zz,U_xy,U_xz,U_yz)',
                 '3: SSC, 1 parameter (overdensity)',
-                '4: SSC + SGW, 2 parameters (overdensities)',
-                '5: SSC + Vela, 2 parameters (overdensities)']
+                '4: SSC + SGW, 2 parameters (overdensities)']
 
 example_dipole = vt.convert_cartesian([300,300,30])
 rhs = np.array(vt.make_bf_rhs(example_dipole))
@@ -46,9 +45,8 @@ example_shear = vt.flatten_shear_matrix(rhs.T.dot(example_shear.dot(rhs)))
 parameter_default = [[],
                      example_dipole,
                      np.concatenate((example_dipole,example_shear)),
-                     [1],
-                     [1,1],
-                     [1,1]]
+                     np.array([2.78]),
+                     np.array([1.82,46.11])]
 
 def _def_parser():
     parser = ArgumentParser(description='Simulate random realizations of distance')
@@ -142,9 +140,13 @@ def _get_peculiar_velocities(mode,p,l,b,z):
               1: (lambda p_,l_,b_,z_: 
                   np.array(map(lambda x1,x2: p_.dot(vt.v_dipole_comp(x1,x2)),l_,b_))),
               2: (lambda p_,l_,b_,z_: 
-                  np.array(map(lambda x1,x2,x3: p_.dot(vt.v_tidal_comp(x1,x2,x3)),z_,l_,b_)))}
-    if mode > 2:
-        raise ValueError('Signal mode not implemented yet.')
+                  np.array(map(lambda x1,x2,x3: p_.dot(vt.v_tidal_comp(x1,x2,x3)),z_,l_,b_))),
+              3: (lambda p_,l_,b_,z_:
+                  np.array(map(lambda x1,x2,x3: vt.convert_cartesian([1,x2,x3]).
+                               dot(vt.v_attractor(x1,x2,x3,[p_[0],0])),z_,l_,b_))),
+              4: (lambda p_,l_,b_,z_:
+                  np.array(map(lambda x1,x2,x3: vt.convert_cartesian([1,x2,x3]).
+                               dot(vt.v_attractor(x1,x2,x3,p_)),z_,l_,b_)))}
 
     return v_fcts[mode](p,l,b,z)
 
