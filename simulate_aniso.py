@@ -19,6 +19,8 @@ import os
 import sys
 import re 
 import warnings
+import cPickle
+import datetime
 
 from argparse import ArgumentParser
 
@@ -53,7 +55,7 @@ def _def_parser():
     parser.add_argument('files',type=str,nargs='*',help='coordinate files')
     parser.add_argument('-z','--redshift',default=None,nargs=2,
                         help='redshift boundaries',type=float)
-    parser.add_argument('-v','--verbose',default=False,action='store_true',
+    parser.add_argument('-v','--verbosity',action='count',
                         help='verbosity')
     parser.add_argument('-o','--outdir',default=None,type=str,
                         help='outdir')
@@ -61,7 +63,7 @@ def _def_parser():
                         help='short name for saving the results')
     parser.add_argument('-n','--number',default=100,type=int,
                         help='number of realization')
-    parser.add_argument('-s','--signal-mode',default=0,type=int,
+    parser.add_argument('-s','--signal-mode',default=0,type=int,choices=range(len(signal_modes)),
                         help='signal mode: {}'.format('; '.join(signal_modes)))
     parser.add_argument('-p','--parameters',default=None,nargs='*',type=float,
                         help='non-default parameters for signal')
@@ -100,7 +102,7 @@ def _process_args(args):
     messages.append('Parameters: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
                                                           for val in args.parameters])))
 
-    if args.verbose:
+    if args.verbosity:
         print '\n'.join(messages)    
     
     return args
@@ -146,7 +148,11 @@ def _get_peculiar_velocities(mode,p,l,b,z):
 
     return v_fcts[mode](p,l,b,z)
 
-def _simulate_aniso(num_sim,names,l,b,z,v):
+def _simulate_aniso(num_sim,names,l,b,z,v,verbosity):
+    if verbosity > 1:
+        print
+        print 'Running simulations.'
+
     results = {'dipole': {},
                'dipole+shear': {},
                'dipole+shear_trless': {},
@@ -160,54 +166,61 @@ def _simulate_aniso(num_sim,names,l,b,z,v):
     analysis_fcts = {'dipole': at.fit_dipole,
                      'dipole+shear': at.fit_dipole_shear,
                      'dipole+shear_trless': at.fit_dipole_shear_trless,
-                     'sr_90': (lambda data,options: at.get_sr_min_max(data,option,delta=90)),
-                     'sr_45': (lambda data,options: at.get_sr_min_max(data,option,delta=45)),
-                     'sr_22.5:': (lambda data,options: at.get_sr_min_max(data,option,
+                     'sr_90': (lambda data,options: at.get_Q_min_max(data,options,delta=90)),
+                     'sr_45': (lambda data,options: at.get_Q_min_max(data,options,delta=45)),
+                     'sr_22.5:': (lambda data,options: at.get_Q_min_max(data,options,
                                                                          delta=22.5)),
-                     'sr_nw_90': (lambda data,options: at.get_Q_min_max(data,option,delta=90,
+                     'sr_nw_90': (lambda data,options: at.get_Q_min_max(data,options,delta=90,
                                                                         weighted=False)),
-                     'sr_nw_45': (lambda data,options: at.get_Q_min_max(data,option,delta=45,
+                     'sr_nw_45': (lambda data,options: at.get_Q_min_max(data,options,delta=45,
                                                                         weighted=False)),
-                     'sr_nw_22.5:': (lambda data,options: at.get_Q_min_max(data,option,
+                     'sr_nw_22.5:': (lambda data,options: at.get_Q_min_max(data,options,
                                                                            delta=22.5,
                                                                            weighted=False))}
     
     for k in xrange(num_sim):
-        data, options, res = st.simulate_data(names,l,b,z,v=v)
+        if verbosity > 2:
+            print 'Realization {}'.format(k)
+        data, options = st.simulate_data(names,l,b,z,v=v)
         for key in sorted(results.keys()):
-            analysis = analysis_fct[key](data,options)
+            analysis = analysis_fcts[key](data,options)
             for skey,result in analysis.items():
                 if skey not in results[key].keys():
                     if type(result) == list:
                         results[key][skey] = result
-                    elif type(result) == float:
+                    elif type(result) in [float, np.float64]:
                         results[key][skey] = np.array([result])
                     else:
                         raise TypeError('Output of analysis functions must be a dictionary of lists and floats.')
                 else:
                     if type(result) == list:
                         results[key][skey].extend(result)
-                    elif type(result) == float:
+                    elif type(result) in [float, np.float64]:
                         results[key][skey] = np.append(results[key][skey],result)
                     else:
                         raise TypeError('Output of analysis functions must be a dictionary of lists and floats.')
 
     return results
 
-def _save_results(results,outfile,arg_dict,verbose=False):
+def _save_results(results,outfile,arg_dict,verbosity=False):
     """
     """
     new = True
-    if os.isfile(outfile):
+    if os.path.isfile(outfile):
         out = cPickle.load(file(outfile,'r'))
-        if out['args'] == arg_dict and out['version'] == __version__ :
+        checks = [out['version'] == __version__,
+                  out['args']['files'] == arg_dict['files'],
+                  out['args']['signal_mode'] == arg_dict['signal_mode'],
+                  (out['args']['parameters'] == arg_dict['parameters']).all()]
+        if False not in checks:
             new = False
         else:
             outfile = _get_conflict_file_name(outfile)
-            if out['args'] != arg_dict:
-                warnings.warn('conflicting results found; new results saved a {}'.format(outfile))
-            else:
+            if not checks[0]:
                 warnings.warn('conflicting versions; new results saved a {}'.format(outfile))
+            else:
+                warnings.warn('conflicting results found; new results saved a {}'.format(outfile))
+                
 
     if new:
         out = {'args': arg_dict, 'version': __version__}
@@ -220,24 +233,29 @@ def _save_results(results,outfile,arg_dict,verbose=False):
                 if type(result) == list:
                     out[key][skey].extend(result)
                 elif type(result) == np.ndarray:
-                    out[key][skey] = np.append(old[key][skey],result)
+                    out[key][skey] = np.append(out[key][skey],result)
         cPickle.dump(out,file(outfile,'w'))
+
+    if verbosity > 0:
+        print
+        print 'Results saved.'
 
 def _get_conflict_file_name(outfile):
     """
     """
-    outdir = '/'.join(outfile.split('/')[:-1])+'/'
+    outdir = '/'.join(outfile.split('/')[:-1])
     outfilename = outfile.split('/')[-1]
     filelist = os.listdir(outdir)
-    previous_conflicts = [filename.split('.')[2] in filelist 
-                          if filename.startswith(outfilename)
-                          and len(filename.split('.')) == 2]
+    previous_conflicts = [filename.split('.')[2] for filename in filelist 
+                          if filename.startswith(outfilename) and len(filename.split('.')) == 2]
     max_conflict = max([int(re.find('[0-9]{3}',conflict)[0]) for conflict in previous_conflicts])
     
     return '{}.conflict_{:03.0f}'.format(outfile,max_conflict+1)
     
 
 def _main():
+    t_start = datetime.datetime.now()
+
     parser = _def_parser()
     args = parser.parse_args()
     args = _process_args(args)
@@ -249,10 +267,21 @@ def _main():
 
     v = _get_peculiar_velocities(args.signal_mode,args.parameters,l,b,z)
 
-    results = _simulate_aniso(names,l,b,z,v)
-    #sys.exit()
+    if args.verbosity > 0:
+        print 
+        print 'Data loaded.'
+        print 'Number of SNe: {}'.format(len(z))
+
+    results = _simulate_aniso(args.number,names,l,b,z,v,verbosity=args.verbosity)
     
-    _save_results(results,'{}{}'.format(args.outdir,outfile),vars(args),verbose=args.verbose)
+    arg_dict = vars(args)
+    del arg_dict['number']
+    _save_results(results,'{}{}'.format(args.outdir,outfile),arg_dict,verbosity=args.verbosity)
+
+    if args.verbosity > 1:
+        t_end = datetime.datetime.now()
+        diff = t_end - t_start
+        print 'Total running time: {}'.format(diff)
 
 if __name__ == '__main__':
     _main()

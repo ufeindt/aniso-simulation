@@ -236,7 +236,7 @@ def get_eigval_transform(eig_vecs):
 
 def convert_to_eig_val_base(fit,cov):
     # In eigenvalue base
-    tmp_eigvals, tmp_eigvecs =  np.linalg.eig(reshape_flat_shear(fit,offset=3))
+    tmp_eigvals, tmp_eigvecs =  np.linalg.eig(reshape_shear_matrix(fit,offset=3))
     idx = np.argsort(tmp_eigvals)[::-1]
     eig_vals = tmp_eigvals[idx]
     eig_vecs = [tmp_eigvecs[:,idx[l]] for l in xrange(3)]
@@ -342,7 +342,7 @@ def get_distance_estimates_kaiser(fit,cov,gamma=2.):
         -2*U**3*fit[0]*fit[2]/C**2,
         -2*U**3*fit[1]*fit[2]/C**2
         ]) * B
-    
+
     cov_d = J.dot(cov).dot(J)
 
     return d, cov_d
