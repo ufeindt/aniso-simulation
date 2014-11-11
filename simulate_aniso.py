@@ -12,9 +12,13 @@ Note: The convention for spherical coordinates used here is
 Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 """
 
+__version__ = '0.1' 
+
 import numpy as np
 import os
 import sys
+import re 
+import warnings
 
 from argparse import ArgumentParser
 
@@ -171,27 +175,67 @@ def _simulate_aniso(num_sim,names,l,b,z,v):
     for k in xrange(num_sim):
         data, options, res = st.simulate_data(names,l,b,z,v=v)
         for key in sorted(results.keys()):
-            tmp = analysis_fct[key](data,options)
-            for skey in tmp.keys():
+            analysis = analysis_fct[key](data,options)
+            for skey,result in analysis.items():
                 if skey not in results[key].keys():
-                    if type(tmp[skey]) == list:
-                        results[key][skey] = tmp[skey]
-                    elif type(tmp[skey]) == float:
-                        results[key][skey] = np.array([tmp[skey]])
+                    if type(result) == list:
+                        results[key][skey] = result
+                    elif type(result) == float:
+                        results[key][skey] = np.array([result])
                     else:
                         raise TypeError('Output of analysis functions must be a dictionary of lists and floats.')
                 else:
-                    if type(tmp[skey]) == list:
-                        results[key][skey].extend(tmp[skey])
-                    elif type(tmp[skey]) == float:
-                        results[key][skey] = np.append(results[key][skey],tmp[skey])
+                    if type(result) == list:
+                        results[key][skey].extend(result)
+                    elif type(result) == float:
+                        results[key][skey] = np.append(results[key][skey],result)
                     else:
                         raise TypeError('Output of analysis functions must be a dictionary of lists and floats.')
 
     return results
 
-def _save_results(results,outfile):
-    pass
+def _save_results(results,outfile,arg_dict,verbose=False):
+    """
+    """
+    new = True
+    if os.isfile(outfile):
+        out = cPickle.load(file(outfile,'r'))
+        if out['args'] == arg_dict and out['version'] == __version__ :
+            new = False
+        else:
+            outfile = _get_conflict_file_name(outfile)
+            if out['args'] != arg_dict:
+                warnings.warn('conflicting results found; new results saved a {}'.format(outfile))
+            else:
+                warnings.warn('conflicting versions; new results saved a {}'.format(outfile))
+
+    if new:
+        out = {'args': arg_dict, 'version': __version__}
+        for key in results.keys():
+            out[key] = results[key]
+        cPickle.dump(out,file(outfile,'w'))
+    else:
+        for key,analysis in results.items():
+            for skey,result in analysis.items():
+                if type(result) == list:
+                    out[key][skey].extend(result)
+                elif type(result) == np.ndarray:
+                    out[key][skey] = np.append(old[key][skey],result)
+        cPickle.dump(out,file(outfile,'w'))
+
+def _get_conflict_file_name(outfile):
+    """
+    """
+    outdir = '/'.join(outfile.split('/')[:-1])+'/'
+    outfilename = outfile.split('/')[-1]
+    filelist = os.listdir(outdir)
+    previous_conflicts = [filename.split('.')[2] in filelist 
+                          if filename.startswith(outfilename)
+                          and len(filename.split('.')) == 2]
+    max_conflict = max([int(re.find('[0-9]{3}',conflict)[0]) for conflict in previous_conflicts])
+    
+    return '{}.conflict_{:03.0f}'.format(outfile,max_conflict+1)
+    
 
 def _main():
     parser = _def_parser()
@@ -208,7 +252,7 @@ def _main():
     results = _simulate_aniso(names,l,b,z,v)
     #sys.exit()
     
-    _save_results(results,'{}{}'.format(args.outdir,outfile))
+    _save_results(results,'{}{}'.format(args.outdir,outfile),vars(args),verbose=args.verbose)
 
 if __name__ == '__main__':
     _main()
