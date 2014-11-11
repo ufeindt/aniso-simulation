@@ -198,3 +198,93 @@ def fit_dipole_shear_trless(data,options):
 
     return results
 
+def get_Q_min_max(l_res,b_res,res,delta=90,l_grid=None,b_grid=None,full_opt=True,weighted=True):
+    if l_grid is None and b_grid is None:
+        n_grid = int(180./delta)
+        l_grid = np.linspace(-180,180,2*n_grid+2)[:-1]
+        b_grid = np.linspace(-90,90,ngrid+2)[1:-1]
+    
+    Q = scan_Q(l_res,b_res,res,l_grid,b_grid,delta=delta,weighted=weighted)
+    Q_max, l_max, b_max = find_max(Q,l_grid,b_grid)
+    Q_min, l_min, b_min = find_min(Q,l_grid,b_grid)
+
+    if full_opt:
+        fmin_min = fmin(smoothed_res,(l_min,b_min),args=(l_res,b_res,res,delta,weighted),
+                        disp=0,full_output=1)
+        Q_min = fmin_min[1]
+        l_min = fmin_min[0][0]
+        b_min = fmin_min[0][1]
+
+        fmin_max = fmin(smoothed_res,(l_max,b_max),args=(l_res,b_res,-res,delta,weighted),
+                        disp=0,full_output=1)
+        Q_max = -fmin_max[1]
+        l_max = fmin_max[0][0]
+        b_max = fmin_max[0][1]        
+
+    results = {'Q_max': Q_max,
+               'l_max': ((l_max -180)%360)+180,
+               'b_max': b_max,
+               'Q_min': Q_min,
+               'l_min': ((l_min -180)%360)+180,
+               'b_min': b_min,
+               'dQ': Q_max - Q_min}
+
+    return results
+
+# --------------------------------- #
+# -- Smoothed residual functions -- #
+# --------------------------------- #
+
+def smoothed_res(lb,l_res,b_res,res,delta,weighted):
+    """
+    lb       -- tuple of coordinates where to evaluate SR
+    l_res    -- numpy array of l values in degrees
+    b_res    -- numpy array of b values in degrees
+    res      -- numpy array of error-weighted Hubble residuals
+    delta    -- smoothing parameter in degrees
+    weighted -- boolean whether to divide by sum of weights
+    """
+    if lb[1] > 90 or lb[1] < -90: 
+        return 1e20 
+
+    ang_seps = dp.ang_sep(lb[0],lb[1],l_res,b_res)
+    weights = np.exp(-ang_seps**2/(2*delta**2)) / np.sqrt(2*_d2r**2*delta**2)
+
+    Q = np.sum(res*weights) 
+    if weighted:
+        Q /= np.sum(weights) 
+
+    return Q
+
+def scan_Q(l_res,b_res,res,l_grid,b_grid,delta=90,weighted=True):
+    out = []
+    for l, b in zip(l_grid,b_grid):
+        out.append(smoothed_res((l,b),l_res,b_res,res,delta,weighted))
+
+    return np.array(out)
+
+def find_max(Q,l_grid,b_grid):
+    Q_max = Q.max()
+    l_max = l_grid[np.where(Q == Q_max)]
+    b_max = b_grid[np.where(Q == Q_max)]
+
+    if (len(b_max[(b_max > -90) & (b_max < 90)]) > 1 and
+        len(l_max[(l_max > -180) & (l_max < 180)]) > 1):
+        print 'Warning: Maximum found at multiple locations' 
+        print 'l:', l_max
+        print 'b:', b_max
+
+    return Q_max, l_max[0], b_max[0]
+
+def find_min(Q,l_grid,b_grid):
+    Q_min = Q.min()
+    l_min = l_grid[np.where(Q == Q_min)]
+    b_min = b_grid[np.where(Q == Q_min)]
+
+    if (len(b_min[(b_min > -90) & (b_min < 90)]) > 1 and
+        len(l_min[(l_min > -180) & (l_min < 180)]) > 1):
+        print 'Warning: Minimum found at multiple locations'
+        print 'l:', l_min
+        print 'b:', b_min
+
+    return Q_min, l_min[0], b_min[0]

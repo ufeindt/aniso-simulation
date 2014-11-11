@@ -160,13 +160,13 @@ def _simulate_aniso(num_sim,names,l,b,z,v):
                      'sr_45': (lambda data,options: at.get_sr_min_max(data,option,delta=45)),
                      'sr_22.5:': (lambda data,options: at.get_sr_min_max(data,option,
                                                                          delta=22.5)),
-                     'sr_nw_90': (lambda data,options: at.get_sr_min_max(data,option,delta=90,
-                                                                         weighted=False)),
-                     'sr_nw_45': (lambda data,options: at.get_sr_min_max(data,option,delta=45,
-                                                                         weighted=False)),
-                     'sr_nw_22.5:': (lambda data,options: at.get_sr_min_max(data,option,
-                                                                            delta=22.5,
-                                                                            weighted=False))}
+                     'sr_nw_90': (lambda data,options: at.get_Q_min_max(data,option,delta=90,
+                                                                        weighted=False)),
+                     'sr_nw_45': (lambda data,options: at.get_Q_min_max(data,option,delta=45,
+                                                                        weighted=False)),
+                     'sr_nw_22.5:': (lambda data,options: at.get_Q_min_max(data,option,
+                                                                           delta=22.5,
+                                                                           weighted=False))}
     
     for k in xrange(num_sim):
         data, options, res = st.simulate_data(names,l,b,z,v=v)
