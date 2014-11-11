@@ -132,7 +132,7 @@ def _load_coordinates(*filenames,**kwargs):
             out[k].extend([float(a[k]) for a in data
                            if float(a[3]) >= z_range[0] and float(a[3]) < z_range[1]])
 
-        return (np.array(a) for a in out)
+    return (np.array(a) for a in out)
 
 def _get_peculiar_velocities(mode,p,l,b,z):
     v_fcts = {0: (lambda p_,l_,b_,z_: 
