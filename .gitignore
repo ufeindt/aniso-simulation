@@ -2,3 +2,5 @@
 *.pkl
 *.dat
 *.pyc
+*.sh
+files2copy

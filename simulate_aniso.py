@@ -107,7 +107,7 @@ def _process_args(args):
 
 def _make_outfile_name(args):
     if args.short_name is None:
-        outfile = '_'.join(args.files)
+        outfile = '_'.join([a.split('.')[0] for a in args.files])
     else:
         outfile = args.short_name
 
