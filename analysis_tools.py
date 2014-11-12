@@ -135,7 +135,7 @@ def fit_dipole_shear(data,opt):
     results_eig_trless = vt.convert_to_eig_val_base(fit_trless[0],fit_trless[1])
     for k,key in enumerate(['fit_eig','cov_eig','d_eig',
                             'eig_vecs','eig_vec_sph','cos_bf_eig']):
-        results[key+'rless'] = [results_eig_trless[k]]
+        results[key+'_trless'] = [results_eig_trless[k]]
 
     return results
 
