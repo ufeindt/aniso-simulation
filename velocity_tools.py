@@ -12,7 +12,6 @@ Note: The convention for spherical coordinates used here is
 Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 """
 
-
 import numpy as np
 import cosmo_tools as ct
 import cPickle
