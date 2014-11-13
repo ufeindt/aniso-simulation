@@ -57,7 +57,7 @@ def healpy_hist(l,b,NSIDE=4,mask_zero=False):
 # -- using Basemap -- #
 # ------------------- #
 
-def basic_basemap(projection='moll',figsize=(12,8),color='k',
+def basic_basemap(projection='moll',figsize=(8,6),color='k',
                   frame='galactic',marks=True):
     """
     """
@@ -123,9 +123,10 @@ def basic_basemap(projection='moll',figsize=(12,8),color='k',
 
 
 def healpy_basemap(values,NSIDE=4,pixels=None,steps=4,vmin=None,
-                   vmax=None,projection='moll',figsize=(12,8),
+                   vmax=None,projection='moll',figsize=(8,6),
                    cmap=plt.get_cmap('Blues'),color='k',
-                   frame='galactic',marks=True):
+                   frame='galactic',marks=True,cbar=True,cbar_label=None,
+                   cbar_orientation='horizontal'):
     """
     """
     fig, m = basic_basemap(projection=projection,figsize=figsize,
@@ -178,7 +179,15 @@ def healpy_basemap(values,NSIDE=4,pixels=None,steps=4,vmin=None,
             x,y = m(l_new,b_new)
             m.pcolor(x,y,count_arr,vmin=vmin,vmax=vmax,cmap=cmap)
 
-    return fig, m
+    if not cbar:
+        return fig, m
+    else:
+        cbar = plt.colorbar(orientation=cbar_orientation)
+        if cbar_label is not None:
+            cbar.set_label(cbar_label)
+
+        return fig, m, cbar
+    
 
 # ----------------- #
 # -- Other plots -- #
