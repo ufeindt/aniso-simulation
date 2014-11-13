@@ -212,8 +212,9 @@ def _save_results(results,outfile,arg_dict,verbosity=False):
         out = cPickle.load(file(outfile,'r'))
         checks = [out['version'] == __version__,
                   out['args']['files'] == arg_dict['files'],
-                  out['args']['signal_mode'] == arg_dict['signal_mode'],
-                  (out['args']['parameters'] == arg_dict['parameters']).all()]
+                  out['args']['signal_mode'] == arg_dict['signal_mode']]
+        if len(out['args']['parameters']) > 0 and len(arg_dict['parameters']) > 0: 
+            checks.append((out['args']['parameters'] == arg_dict['parameters']).all())
         if False not in checks:
             new = False
         else:
