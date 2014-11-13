@@ -250,8 +250,12 @@ def _get_conflict_file_name(outfile):
     outfilename = outfile.split('/')[-1]
     filelist = os.listdir(outdir)
     previous_conflicts = [filename.split('.')[2] for filename in filelist 
-                          if filename.startswith(outfilename) and len(filename.split('.')) == 2]
-    max_conflict = max([int(re.find('[0-9]{3}',conflict)[0]) for conflict in previous_conflicts])
+                          if filename.startswith(outfilename) and len(filename.split('.')) == 3]
+    if previous_conflicts:
+        max_conflict = max([int(re.find('[0-9]{3}',conflict)[0]) 
+                            for conflict in previous_conflicts])
+    else:
+        max_conflict = -1
     
     return '{}.conflict_{:03.0f}'.format(outfile,max_conflict+1)
     
