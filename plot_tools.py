@@ -58,9 +58,12 @@ def healpy_hist(l,b,NSIDE=4,mask_zero=False):
 # ------------------- #
 
 def basic_basemap(projection='moll',figsize=(8,6),color='k',
-                  frame='galactic',marks=True):
+                  frame='galactic',marks=True,label_color='k'):
     """
     """
+    if label_color is None:
+        label_color = color
+
     fig = plt.figure(figsize=figsize)
     m = Basemap(projection=projection,lon_0=0,lat_0=0,celestial=True)
     m.drawparallels(np.arange(-90.,90.,30.),color=color,linewidth=0.5)
@@ -79,8 +82,8 @@ def basic_basemap(projection='moll',figsize=(8,6),color='k',
             ['N',0,0],['S',np.pi,0]]
 
     if frame == 'galactic':
-        plt.xlabel('l',fontsize=18)
-        plt.ylabel('b',fontsize=18)
+        plt.xlabel('l',fontsize=18,color=label_color)
+        plt.ylabel('b',fontsize=18,color=label_color)
 
         if marks:
             for item in Marked:
@@ -98,8 +101,8 @@ def basic_basemap(projection='moll',figsize=(8,6),color='k',
                     plt.text(l_temp[0]+200000,b_temp[0]+200000,item[0],
                              color=color,size=14)
     elif frame == 'j2000':        
-        plt.xlabel('RA',fontsize=18)
-        plt.ylabel('Dec',fontsize=18)
+        plt.xlabel('RA',fontsize=18,color=label_color)
+        plt.ylabel('Dec',fontsize=18,color=label_color)
 
         if marks:
             for item in Marked:
