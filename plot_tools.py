@@ -24,20 +24,20 @@ import cosmo_tools as ct
 from analysis_tools import _z_bins
 from cosmo_tools import _d2r
 
-
+_nest = False
 _markers = ['ro','bo','go','ko','yo']
 
 # --------------- #
 # -- Utilities -- #
 # --------------- #
 
-def healpy_hist(l,b,NSIDE=4,mask_zero=False):
+def healpy_hist(l,b,NSIDE=4,mask_zero=False,nest=_nest):
     """
     """
     l = np.array(l)
     b = np.array(b)
     
-    pixels = hp.ang2pix(NSIDE,(90-b)*np.pi/180,l*np.pi/180)
+    pixels = hp.ang2pix(NSIDE,(90-b)*_d2r,l*_d2r,nest=nest)
     pix_hist = np.histogram(pixels,bins=range(hp.nside2npix(NSIDE)+1))[0]
     
     if mask_zero:
@@ -45,6 +45,18 @@ def healpy_hist(l,b,NSIDE=4,mask_zero=False):
                 np.arange(hp.nside2npix(NSIDE))[pix_hist>0])
     else:
         return pix_hist, np.arange(hp.nside2npix(NSIDE))
+
+def healpy_grid(NSIDE,nest=_nest):
+    """
+    """
+    l = []
+    b = []
+    for ipix in xrange(hp.nside2npix(NSIDE)):
+        theta, phi = hp.pix2ang(NSIDE,ipix,nest=nest)
+        l.append(phi/_d2r)
+        b.append(90-theta/_d2r)
+
+    return np.array(l), np.array(b)
 
 # ---------------- #
 # -- Histograms -- #
@@ -127,8 +139,8 @@ def basic_basemap(projection='moll',figsize=(8,6),color='k',
 
 def healpy_basemap(values,NSIDE=4,pixels=None,steps=4,vmin=None,
                    vmax=None,projection='moll',figsize=(8,6),
-                   cmap=plt.get_cmap('Blues'),color='k',
-                   frame='galactic',marks=True,cbar=True,cbar_label=None,
+                   cmap='Blues',color='k',frame='galactic',marks=True,
+                   cbar=True,cbar_label=None,nest=_nest,
                    cbar_orientation='horizontal'):
     """
     """
@@ -141,9 +153,11 @@ def healpy_basemap(values,NSIDE=4,pixels=None,steps=4,vmin=None,
         vmin = min(values)
     if vmax is None:
         vmax = max(values)
+    if type(cmap) == str:
+        cmap = plt.get_cmap(cmap)
 
     for pix,count in zip(pixels,values):
-        corners = hp.boundaries(NSIDE,pix,step=steps)
+        corners = hp.boundaries(NSIDE,pix,step=steps,nest=nest)
         corners_b, corners_l = hp.vec2ang(np.transpose(corners))
         l_raw = corners_l/_d2r
         l_edges = (corners_l/_d2r)%360
