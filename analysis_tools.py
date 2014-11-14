@@ -207,7 +207,8 @@ def fit_dipole_shear_trless(data,opt):
 
     return results
 
-def get_Q_min_max(data,options,delta=90,l_grid=None,b_grid=None,full_opt=True,weighted=True):
+def get_Q_min_max(data,options,delta=90,l_grid=None,b_grid=None,full_opt=True,
+                  weighted=True,return_Q_grid=False):
     """
     """
     l_res = np.array([a[4] for b in data for a in b])
@@ -243,6 +244,11 @@ def get_Q_min_max(data,options,delta=90,l_grid=None,b_grid=None,full_opt=True,we
                'l_min': ((l_min -180)%360)+180,
                'b_min': b_min,
                'dQ': Q_max - Q_min}
+
+    if return_Q_grid:
+        results['l_grid'] = l_grid
+        results['b_grid'] = b_grid
+        results['Q_grid'] = Q
 
     return results
 
@@ -364,6 +370,20 @@ def load_results(key,skeys,prefixes,signal_mode=1,cumulative=False,
         return tuple(out)
     else:
         return out[0]
+
+def function_of_results(f,*results):
+    """
+    Apply function to results previously loaded
+    """
+    out = {}
+
+    for key in results[0].keys():
+        out[key] = []
+        for result_list in zip(*[a[key] for a in results]):
+            out[key].append(f(*result_list))
+
+    return out
+
 
 def load_p_values(key,skey,prefixes,signal_mode=1,cumulative=False,
                 z_bins=None,resultdir='results/'):
