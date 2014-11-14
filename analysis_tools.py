@@ -371,9 +371,9 @@ def load_p_values(key,skey,prefixes,signal_mode=1,cumulative=False,
     """
     p = {}
     signal = load_results(key,skey,prefixes,z_bins=z_bins,resultdir=resultdir,
-                          signal_mode=signal_mode)
+                          cumulative=cumulative,signal_mode=signal_mode)
     noise  = load_results(key,skey,prefixes,z_bins=z_bins,resultdir=resultdir,
-                          signal_mode=0)
+                          cumulative=cumulative,signal_mode=0)
 
     for key in signal.keys():
         p[key] = []
