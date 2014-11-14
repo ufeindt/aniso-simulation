@@ -226,7 +226,7 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
     
     fig = plt.figure(figsize=figsize)
     for (prefix,name,marker) in zip(prefixes,names,markers):
-        plt.plot(z,[np.median(a) for a in result[prefix]],marker,ms=8,label=name)
+        plt.plot(z,[median_fct(a) for a in result[prefix]],marker,ms=8,label=name)
         if connect_w_line:
             plt.plot(z,[median_fct(a) for a in result[prefix]],marker[0]+'-')
         
