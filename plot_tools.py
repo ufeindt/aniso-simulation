@@ -18,18 +18,18 @@ import healpy as hp
 import cPickle
 from mpl_toolkits.basemap import Basemap
 
+import analysis_tools as at
 import cosmo_tools as ct
 
+from analysis_tools import _z_bins
 from cosmo_tools import _d2r
+
+
+_markers = ['ro','bo','go','ko','yo']
 
 # --------------- #
 # -- Utilities -- #
 # --------------- #
-
-def load_results(filename):
-    """
-    """
-    return cPickle.load(file(filename,'r'))
 
 def healpy_hist(l,b,NSIDE=4,mask_zero=False):
     """
@@ -195,3 +195,69 @@ def healpy_basemap(values,NSIDE=4,pixels=None,steps=4,vmin=None,
 # ----------------- #
 # -- Other plots -- #
 # ----------------- #
+
+def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),save2file=None,
+                 z_range=(0.,0.12),y_range=None,y_label=None,legend='upper left',
+                 connect_w_line=True,title=None,z_bins=None,markers=None,median_fct=np.median):
+    """
+    """
+    if prefixes is None:
+        prefixes = sorted(result.keys())
+        
+    if names is None:
+        names = [prefix.replace('_',' ') for prefix in prefixes]
+
+    if len(names) < len(prefixes):
+        raise ValueError('Require as many names as prefixes')
+
+    if z_bins is None:
+        z_bins = _z_bins
+    
+    if markers is None:
+        markers = _markers
+
+    if len(markers) < len(prefixes):
+        raise ValueError('Require as many markers as prefixes')
+
+    if cumulative:
+        z = z_bins[1:]
+    else:
+        z = [np.mean([z_min,z_max]) for z_min, z_max in zip(z_bins[:-1],z_bins[1:])]
+    
+    fig = plt.figure(figsize=figsize)
+    for (prefix,name,marker) in zip(prefixes,names,markers):
+        plt.plot(z,[np.median(a) for a in result[prefix]],marker,ms=8,label=name)
+        if connect_w_line:
+            plt.plot(z,[median_fct(a) for a in result[prefix]],marker[0]+'-')
+        
+    if not cumulative:
+        for z_val in z_bins:
+            plt.plot([z_val,z_val],[-1e6,1e6],'k--',scaley=False)
+    
+    if legend is not None:
+        plt.legend(loc=legend)
+        
+    if z_range is not None:
+        plt.xlim(z_range)
+        
+    if y_range is not None:
+        plt.ylim(y_range)
+    
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    
+    if cumulative:
+        plt.xlabel(r'$z_{max}$',fontsize=20)
+    else:
+        plt.xlabel(r'$z_{mean}$',fontsize=20)        
+    
+    if y_label is not None:
+        plt.ylabel(y_label,fontsize=20)
+
+    if title is not None:
+        plt.title(title,fontsize=20)
+
+    if save2file is not None:
+        plt.savefig(save2file)
+        
+    return fig

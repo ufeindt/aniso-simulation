@@ -13,6 +13,7 @@ Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 """
 
 import numpy as np
+import cPickle
 
 from scipy.optimize import leastsq, fmin
 from copy import deepcopy
@@ -21,6 +22,8 @@ import cosmo_tools as ct
 import velocity_tools as vt
 
 from cosmo_tools import _d2r
+
+_z_bins = [0.015,0.025,0.035,0.045,0.06,0.1]
 
 def fit_dipole(data,opt):
     options = deepcopy(opt)
@@ -300,3 +303,81 @@ def find_min(Q,l_grid,b_grid):
         print 'b:', b_min
 
     return Q_min, l_min[0], b_min[0]
+
+# -------------- #
+# -- p-values -- #
+# -------------- #
+
+def p_value(signal,noise):
+    """
+    """
+    out = []
+
+    if type(signal) in [float,np.float64]:
+        signal = np.array([signal])
+    
+    for sig in signal:
+        p = float(len(noise[noise > sig]))/len(noise)
+        out.append(p)
+
+    if len(out) > 1:
+        return np.array(out)
+    else:
+        return out[0]
+
+# ----------------------- #
+# -- Loading functions -- #
+# ----------------------- #
+
+def load_result_file(filename):
+    """
+    """
+    return cPickle.load(file(filename,'r'))
+
+def load_results(key,skeys,prefixes,signal_mode=1,cumulative=False,
+                 z_bins=None,resultdir='results/'):
+    """
+    """
+    if type(skeys) in [list,tuple]:
+        out = [{prefix: [] for prefix in prefixes} for skey in skeys]
+    elif type(skeys) == str:
+        skeys = [skeys]
+        out = [{prefix: [] for prefix in prefixes}]
+    
+    if z_bins is None:
+        z_bins = _z_bins
+
+    if cumulative:
+        z_mins = [z_bins[0] for z in z_bins[:-1]]
+    else:
+        z_mins = z_bins[:-1]
+    z_maxs = z_bins[1:]
+    
+    for prefix in prefixes:
+        for z_min, z_max in zip(z_mins,z_maxs):
+            filestart = '{}{}_s{}_{:.3f}_{:.3f}'.format(resultdir,prefix,signal_mode,z_min,z_max).replace('.','')
+            results = load_result_file('{}.pkl'.format(filestart))
+            for k,skey in enumerate(skeys):
+                out[k][prefix].append(results[key][skey])
+            
+    if len(out) > 1:
+        return tuple(out)
+    else:
+        return out[0]
+
+def load_p_values(key,skey,prefixes,signal_mode=1,cumulative=False,
+                z_bins=None,resultdir='results/'):
+    """
+    """
+    p = {}
+    signal = load_results(key,skey,prefixes,z_bins=z_bins,resultdir=resultdir,
+                          signal_mode=signal_mode)
+    noise  = load_results(key,skey,prefixes,z_bins=z_bins,resultdir=resultdir,
+                          signal_mode=0)
+
+    for key in signal.keys():
+        p[key] = []
+        for slist,nlist in zip(signal[key],noise[key]):
+            p[key].append(p_value(slist,nlist))
+
+    return p
