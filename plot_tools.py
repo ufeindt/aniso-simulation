@@ -26,6 +26,7 @@ from cosmo_tools import _d2r
 
 _nest = False
 _markers = ['ro','bo','go','ko','yo']
+_cmaps = ['Reds','Blues','Greens','Greys','Oranges']
 
 # --------------- #
 # -- Utilities -- #
@@ -140,12 +141,15 @@ def basic_basemap(projection='moll',figsize=(8,6),color='k',
 def healpy_basemap(values,NSIDE=4,pixels=None,steps=4,vmin=None,
                    vmax=None,projection='moll',figsize=(8,6),
                    cmap='Blues',color='k',frame='galactic',marks=True,
-                   cbar=True,cbar_label=None,nest=_nest,
-                   cbar_orientation='horizontal'):
+                   cbar=True,cbar_label=None,nest=_nest,alpha=1,
+                   cbar_orientation='horizontal',fig_m=None):
     """
     """
-    fig, m = basic_basemap(projection=projection,figsize=figsize,
-                           color=color,frame=frame,marks=marks)
+    if fig_m is None:
+        fig, m = basic_basemap(projection=projection,figsize=figsize,
+                               color=color,frame=frame,marks=marks)
+    else:
+        fig, m = fig_m
 
     if pixels is None:
         pixels = range(hp.nside2npix(NSIDE))
@@ -183,7 +187,7 @@ def healpy_basemap(values,NSIDE=4,pixels=None,steps=4,vmin=None,
                                  & (np.abs(b_new) != 90)).astype(int))
             if num_on_edges > 0:
                 x,y = m(l_temp,b_new)
-                m.pcolor(x,y,count_arr,vmin=vmin,vmax=vmax,cmap=cmap)
+                m.pcolor(x,y,count_arr,vmin=vmin,vmax=vmax,cmap=cmap,alpha=alpha)
 
             l_temp = np.fmax(l_new,180.0001)
             # Check that there are points not on the edges
@@ -191,10 +195,10 @@ def healpy_basemap(values,NSIDE=4,pixels=None,steps=4,vmin=None,
                                  & (np.abs(b_new) != 90)).astype(int))
             if num_on_edges > 0:
                 x,y = m(l_temp,b_new)
-                m.pcolor(x,y,count_arr,vmin=vmin,vmax=vmax,cmap=cmap)
+                m.pcolor(x,y,count_arr,vmin=vmin,vmax=vmax,cmap=cmap,alpha=alpha)
         else:
             x,y = m(l_new,b_new)
-            m.pcolor(x,y,count_arr,vmin=vmin,vmax=vmax,cmap=cmap)
+            m.pcolor(x,y,count_arr,vmin=vmin,vmax=vmax,cmap=cmap,alpha=alpha)
 
     if not cbar:
         return fig, m
@@ -204,14 +208,62 @@ def healpy_basemap(values,NSIDE=4,pixels=None,steps=4,vmin=None,
             cbar.set_label(cbar_label)
 
         return fig, m, cbar
+
+def plot_results_l_b(result_l,result_b,prefix,NSIDE=4,names=None,cumulative=False,
+                     figsize=(8,6),save2file=None,legend='upper left',title=None,
+                     z_bins=None,cmaps=None,hist=False,pixels=None,steps=4,vmin=None,
+                     vmax=None,color='k',frame='galactic',marks=True,nest=_nest,
+                     cbar=False,cbar_label=None,cbar_orientation='horizontal',
+                     mask_zero=False,median_fct=np.median,markers=None,projection='moll'):
+    """
+    Overlapping hists do not work well.
+    """        
+    if z_bins is None:
+        z_bins = _z_bins
     
+    if cmaps is None:
+        cmaps = [plt.get_cmap(cmap) for cmap in _cmaps]
+
+    if hist and len(cmaps) < len(z_bins) - 1:
+        raise ValueError('Require as many colormaps as z bins')
+    
+    if markers is None:
+        markers = _markers
+
+    if not hist and len(markers) < len(z_bins) - 1:
+        raise ValueError('Require as many markers as z bins')
+
+    fig, m  = basic_basemap(projection=projection,figsize=figsize,
+                            color=color,frame=frame,marks=marks)
+
+    for z_min,z_max,cmap,marker,l,b in zip(z_bins[:-1],z_bins[1:],cmaps,markers,
+                                           result_l[prefix],result_b[prefix]):
+        if cumulative:
+            z_min = z_bins[0]
+        if hist:
+            values, pixels = healpy_hist(l,b,mask_zero=mask_zero,NSIDE=NSIDE,nest=nest)
+            healpy_basemap(values,NSIDE=NSIDE,pixels=pixels,steps=steps,vmin=vmin,
+                           vmax=vmax,projection=projection,cmap=cmap,cbar=cbar,
+                           cbar_label=cbar_label,nest=_nest,cbar_orientation=cbar_orientation,
+                           fig_m=(fig,m),alpha=0.2)
+        else:
+            l_median = median_fct(l)
+            b_median = median_fct(b)
+            x,y = m(l_median,b_median)
+            zlabel = r'${:.3f}<z<{:.3f}$'.format(z_min,z_max)
+            plt.plot(x,y,marker,ms=8,label=zlabel)
+
+    if legend is not None:
+        plt.legend(loc=legend)   
+
+    return fig, m
 
 # ----------------- #
 # -- Other plots -- #
 # ----------------- #
 
 def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),save2file=None,
-                 z_range=(0.,0.12),y_range=None,y_label=None,legend='upper left',
+                 z_range=(0.,0.11),y_range=None,y_label=None,legend='upper left',
                  connect_w_line=True,title=None,z_bins=None,markers=None,median_fct=np.median):
     """
     """
@@ -261,12 +313,12 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
     plt.yticks(fontsize=14)
     
     if cumulative:
-        plt.xlabel(r'$z_{max}$',fontsize=20)
+        plt.xlabel(r'$z_{max}$',fontsize=22)
     else:
-        plt.xlabel(r'$z_{mean}$',fontsize=20)        
+        plt.xlabel(r'$z_{mean}$',fontsize=22)        
     
     if y_label is not None:
-        plt.ylabel(y_label,fontsize=20)
+        plt.ylabel(y_label,fontsize=22)
 
     if title is not None:
         plt.title(title,fontsize=20)
@@ -275,3 +327,6 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
         plt.savefig(save2file)
         
     return fig
+
+
+
