@@ -288,7 +288,7 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
 
     if z_range is None:
         if cumulative:
-            z_range = (z_bins[0]-0.01,z_bins[-1]+0.01)
+            z_range = (z_bins[1]-0.01,z_bins[-1]+0.01)
         else:
             z_range = (0,z_bins[-1]+0.01)
 
