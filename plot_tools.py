@@ -356,7 +356,7 @@ def plot_hist(result,figsize=(8,6),save2file=None,hist_range=None,bins=50,
     plt.yticks(fontsize=14)
     
     if x_label is not None:
-        plt.xlabel(r'$z_{max}$',fontsize=22)
+        plt.xlabel(z_label,fontsize=22)
     
     if normed:
         plt.ylabel('pdf',fontsize=22)
