@@ -263,8 +263,9 @@ def plot_results_l_b(result_l,result_b,prefix,NSIDE=4,names=None,cumulative=Fals
 # ----------------- #
 
 def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),save2file=None,
-                 z_range=(0.,0.11),y_range=None,y_label=None,legend='upper left',
-                 connect_w_line=True,title=None,z_bins=None,markers=None,median_fct=np.median):
+                 z_range=None,y_range=None,y_label=None,legend='upper left',
+                 connect_w_line=True,title=None,z_bins=None,markers=None,median_fct=np.median,
+                 errors=None):
     """
     """
     if prefixes is None:
@@ -285,6 +286,12 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
     if len(markers) < len(prefixes):
         raise ValueError('Require as many markers as prefixes')
 
+    if z_range is None:
+        if cumulative:
+            z_range = (z_bins[0]-0.01,z_bins[-1]+0.01)
+        else:
+            z_range = (0,z_bins[-1]+0.01)
+
     if cumulative:
         z = z_bins[1:]
     else:
@@ -292,7 +299,12 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
     
     fig = plt.figure(figsize=figsize)
     for (prefix,name,marker) in zip(prefixes,names,markers):
-        plt.plot(z,[median_fct(a) for a in result[prefix]],marker,ms=8,label=name)
+        if errors is None:
+            plt.plot(z,[median_fct(a) for a in result[prefix]],marker,ms=8,label=name)
+        else:
+            plt.errorbar(z,[median_fct(a) for a in result[prefix]],
+                         yerr=[median_fct(a) for a in errors[prefix]],
+                         fmt=marker,ms=8,label=name)
         if connect_w_line:
             plt.plot(z,[median_fct(a) for a in result[prefix]],marker[0]+'-')
         
@@ -303,8 +315,7 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
     if legend is not None:
         plt.legend(loc=legend)
         
-    if z_range is not None:
-        plt.xlim(z_range)
+    plt.xlim(z_range)
         
     if y_range is not None:
         plt.ylim(y_range)
@@ -328,5 +339,34 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
         
     return fig
 
+def plot_hist(result,figsize=(8,6),save2file=None,hist_range=None,bins=50,
+              xlim=None,ylim=None,y_label=None,x_label=None,title=None,normed=False):
+    """
+    """  
+    fig = plt.figure(figsize=figsize)
+    plt.hist(result,range=hist_range,bins=bins,normed=normed)
+        
+    if xlim is not None:
+        plt.xlim(xlim)
+        
+    if ylim is not None:
+        plt.ylim(ylim)
+    
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    
+    if x_label is not None:
+        plt.xlabel(r'$z_{max}$',fontsize=22)
+    
+    if normed:
+        plt.ylabel('pdf',fontsize=22)
+    else:
+        plt.ylabel('Count',fontsize=22)
 
+    if title is not None:
+        plt.title(title,fontsize=20)
 
+    if save2file is not None:
+        plt.savefig(save2file)
+        
+    return fig
