@@ -257,7 +257,7 @@ def convert_to_eig_val_base(fit,cov):
 
     return fit_eig, cov_eig, d_eig, eig_vecs, eig_vec_sph, cos_bf_eig
 
-def get_bf_shear(fit,cov):
+def get_bf_shear(fit,cov,mono=False):
     """
     Get shear in bulk flow direction
     returns bulk flow amplitude and their covariance as well
@@ -272,21 +272,40 @@ def get_bf_shear(fit,cov):
                                            fit[0]*fit[2]*fit[7] +
                                            fit[1]*fit[2]*fit[8])
     
-    out = np.array([U,C/U**2])
-
-    # Jacobian 
-    J = np.array([
-        [
-            fit[0]/U,fit[1]/U,fit[2]/U,0,0,0,0,0,0
-        ],
-        [
-            2*((fit[0]*fit[3]+fit[6]*fit[1]+fit[7]*fit[2])/U**2 -C*fit[0]/U**4),
-            2*((fit[1]*fit[4]+fit[6]*fit[0]+fit[8]*fit[2])/U**2 -C*fit[1]/U**4),
-            2*((fit[2]*fit[5]+fit[7]*fit[0]+fit[8]*fit[1])/U**2 -C*fit[2]/U**4),
-            fit[0]**2/U**2,fit[1]**2/U**2,fit[2]**2/U**2,
-            2*fit[0]*fit[1]/U**2,2*fit[0]*fit[2]/U**2,2*fit[1]*fit[2]/U**2
-        ]
-    ])
+    if mono:
+        out = np.array([U,C/U**2,fit[9]])
+        # Jacobian 
+        J = np.array([
+            [
+                fit[0]/U,fit[1]/U,fit[2]/U,0,0,0,0,0,0,0
+            ],
+            [
+                2*((fit[0]*fit[3]+fit[6]*fit[1]+fit[7]*fit[2])/U**2 -C*fit[0]/U**4),
+                2*((fit[1]*fit[4]+fit[6]*fit[0]+fit[8]*fit[2])/U**2 -C*fit[1]/U**4),
+                2*((fit[2]*fit[5]+fit[7]*fit[0]+fit[8]*fit[1])/U**2 -C*fit[2]/U**4),
+                fit[0]**2/U**2,fit[1]**2/U**2,fit[2]**2/U**2,
+                2*fit[0]*fit[1]/U**2,2*fit[0]*fit[2]/U**2,2*fit[1]*fit[2]/U**2,
+                0
+            ],
+            [
+                0,0,0,0,0,0,0,0,0,1
+            ]
+        ])
+    else:
+        out = np.array([U,C/U**2])
+        # Jacobian 
+        J = np.array([
+            [
+                fit[0]/U,fit[1]/U,fit[2]/U,0,0,0,0,0,0
+            ],
+            [
+                2*((fit[0]*fit[3]+fit[6]*fit[1]+fit[7]*fit[2])/U**2 -C*fit[0]/U**4),
+                2*((fit[1]*fit[4]+fit[6]*fit[0]+fit[8]*fit[2])/U**2 -C*fit[1]/U**4),
+                2*((fit[2]*fit[5]+fit[7]*fit[0]+fit[8]*fit[1])/U**2 -C*fit[2]/U**4),
+                fit[0]**2/U**2,fit[1]**2/U**2,fit[2]**2/U**2,
+                2*fit[0]*fit[1]/U**2,2*fit[0]*fit[2]/U**2,2*fit[1]*fit[2]/U**2
+            ]
+        ])
     
     return out, J.dot(cov).dot(J.T)
 
@@ -308,6 +327,35 @@ def get_distance_estimates(fit,cov):
     for k in xrange(N):
         J[k,k] = 1/fit[N+k]
         J[k,k+N] = -fit[k]/fit[N+k]**2
+
+    cov_d = J.dot(cov).dot(J.T)
+
+    return d, cov_d
+
+def get_distance_estimates_mono(fit,cov):
+    """
+    Get distance estimates and their covariance from bulk flow, shear and monopole
+
+    fit -- numpy array of shape (2*N+1,)
+           first N entries are bulkflow
+           second N are shear
+           last entry is monopole
+    cov -- numpy array of shape (2*N+1,2*N+1)
+           covariance of fit
+    """
+    N = fit.shape[0]/2
+    v = fit[:N]
+    s = fit[N:2*N]
+    m = fit[2*N]
+
+    d = 2*v/(s-2*m)
+
+    # Jacobian 
+    J = np.zeros((N,2*N+1))
+    for k in xrange(N):
+        J[k,k] = 2/(s[k]-2*m)
+        J[k,k+N] = -2*v[k]/(s[k]-2*m)**2
+        J[k,2*N] =  4*v[k]/(s[k]-2*m)**2
 
     cov_d = J.dot(cov).dot(J.T)
 
