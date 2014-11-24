@@ -571,6 +571,47 @@ def sex2deg(RA, Dec, hours=True):
                   for k,a in enumerate(Dec.split(':'))]) * sign
     return RA, Dec
 
+def deg2sex(RA, Dec, output_hours=True, colons=True):
+    """
+    Convert coordinates from degrees to sexagesimal.
+
+    Arguments:
+    RA  -- Right ascension (in hours if hours is True else in degrees)
+    Dec -- Declination (in degrees)
+    """
+    if output_hours:
+        RA = RA/15.
+    
+    if colons:
+        return sexagesimal(RA), sexagesimal(Dec)
+    else:
+        return (sexagesimal(RA,delimeters=['h','m','s']),
+                sexagesimal(Dec,delimeters=['h','m','s']))
+
+def sexagesimal(deg,delimeters=[':',':']):
+    """
+    Convert degrees to sexageismal
+    """
+    out = [int(deg)]
+    deg = (deg - out[-1]) * 60
+    out.append(int(deg))
+    deg = (deg - out[-1]) * 60
+    out.append(deg)
+
+    if len(delimeters) == 2:
+        out = '{}{}{}{}{}'.format(out[0],delimeters[0],
+                                  out[1],delimeters[1],
+                                  out[2])
+    elif len(delimeters) == 3:
+        out = '{}{}{}{}{}{}'.format(out[0],delimeters[0],
+                                    out[1],delimeters[1],
+                                    out[2],delimeters[2])        
+    else:
+        raise ValueError('delimiters must be of length 2 or 3.')
+
+    return out
+    
+
 def attractor_mass(delta,R_A,H_0=_h,O_M=_O_M):
     G = 6.67384e-11 # in m^3 kg^-1 s^-2
     M_solar = 1.9891e30 # in kg
