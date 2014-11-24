@@ -586,7 +586,7 @@ def deg2sex(RA, Dec, output_hours=True, colons=True):
         return sexagesimal(RA), sexagesimal(Dec)
     else:
         return (sexagesimal(RA,delimeters=['h','m','s']),
-                sexagesimal(Dec,delimeters=['h','m','s']))
+                sexagesimal(Dec,delimeters=['d','m','s']))
 
 def sexagesimal(deg,delimeters=[':',':']):
     """
@@ -600,12 +600,12 @@ def sexagesimal(deg,delimeters=[':',':']):
 
     if len(delimeters) == 2:
         out = '{}{}{}{}{}'.format(out[0],delimeters[0],
-                                  out[1],delimeters[1],
-                                  out[2])
+                                  np.abs(out[1]),delimeters[1],
+                                  np.abs(out[2]))
     elif len(delimeters) == 3:
         out = '{}{}{}{}{}{}'.format(out[0],delimeters[0],
-                                    out[1],delimeters[1],
-                                    out[2],delimeters[2])        
+                                    np.abs(out[1]),delimeters[1],
+                                    np.abs(out[2]),delimeters[2])        
     else:
         raise ValueError('delimiters must be of length 2 or 3.')
 
