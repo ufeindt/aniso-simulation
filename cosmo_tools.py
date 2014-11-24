@@ -102,6 +102,27 @@ def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_h,v_dip=None,v_cart=None,v_mon=0,
             result_dip = ((1+z)**2 * H_rec(z) / H_0 * v_mon)
         return result-result_dip
 
+def d_p(z,**kwargs):
+    """
+    Proper distance
+
+    Arguments as for d_l() 
+    """
+    d = d_l(z,**kwargs)
+    result = d/(1+z)
+    return result
+
+def d_a(z,**kwargs):
+    """
+    Angular diameter distance
+
+    Arguments as for d_l() 
+    """
+    d = d_l(z,**kwargs)
+    result = d/(1+z)**2
+    return result
+
+
 def mu(z,**kwargs):
     """
     Distance modulus
