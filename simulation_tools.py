@@ -101,12 +101,15 @@ def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
         else:
             z_pdf_bins = np.array(z_pdf_bins)
     
-    z_cdf = np.cumsum(z_pdf)
-    val_uni = np.random.random(NPoints)
-    val_bins = np.array([np.where(z_cdf > val)[0][0] for val in val_uni])
-    val_rem = ((val_uni - z_cdf[val_bins-1])%1)/((z_cdf[val_bins]-z_cdf[val_bins-1])%1)
+    if len(z_pdf) > 1:
+        z_cdf = np.cumsum(z_pdf)
+        val_uni = np.random.random(NPoints)
+        val_bins = np.array([np.where(z_cdf > val)[0][0] for val in val_uni])
+        val_rem = ((val_uni - z_cdf[val_bins-1])%1)/((z_cdf[val_bins]-z_cdf[val_bins-1])%1)
 
-    z = z_pdf_bins[val_bins] + (z_pdf_bins[val_bins+1] - z_pdf_bins[val_bins]) * val_rem
+        z = z_pdf_bins[val_bins] + (z_pdf_bins[val_bins+1] - z_pdf_bins[val_bins]) * val_rem
+    else:
+        z = np.random.random(NPoints) * (z_range[1]-z_range[0]) + z_range[0]
 
     return z
          

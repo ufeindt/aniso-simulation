@@ -1,9 +1,9 @@
 *.ipynb
 *.pkl
-*.dat
 *.pyc
 *.sh
+*.dat
 files2copy
 results
 plots
-ned_queries
+data

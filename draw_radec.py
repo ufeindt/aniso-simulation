@@ -83,7 +83,7 @@ def _process_args(args):
     if args.z_pdf is None:
         if args.z_pdf_bins is None:
             args.z_pdf = np.ones(1)
-            args.z_pdf_bins = np.array(args.redshift)
+            args.z_pdf_bins = np.array(z_range)
         else:
             args.z_pdf_bins = np.array(args.z_pdf_bins)
             args.z_pdf = np.ones(len(args.z_pdf_bins)-1)/(len(args.z_pdf_bins)-1)         
@@ -116,21 +116,40 @@ def _process_args(args):
     return args
 
 def _save_sample(name,RA,Dec,z,outfile):
-    f = file(outfile, 'w')
-    for values in zip(range(len(RA)),RA,Dec,z):
-        print >> f, '{}{} {} {} {}'.format(name,*values)
-    f.close()
+    """
+    """
+    out = np.zeros((len(name),),dtype=[('Name', 'S6'), ('RA', '<f8'), ('Dec', '<f8'), ('z', '<f8')])
+    out['Name'] = name
+    out['RA'] = RA
+    out['Dec'] = Dec
+    out['z'] = z
+
+    _save_structured_array(out,outfile)
+
+def _save_structured_array(array,outfile,delimiter=' '):
+    """
+    """
+    header = ' '.join(array.dtype.names)
+
+    fmt = ['%f' if a[1][:2] == '<f' else '%i' if a[1][:2] == '<i' else '%s' 
+           for a in array.dtype.descr]
+
+    np.savetxt(outfile,array,delimiter=delimiter,header=header,fmt=('%s','%f','%f','%f'))
 
 def _main():
     parser = _def_parser()
     args = parser.parse_args()
     args = _process_args(args)
 
+    print args
+
     RA, Dec = st.simulate_l_b_coverage(args.number,args.zone_of_avoidance,
                                        args.ra_range,args.dec_range,'j2000')
     z = st.simulate_z_coverage(args.number,args.redshift,args.z_pdf,args.z_pdf_bins)
 
-    _save_sample(args.name,RA,Dec,z,args.outfile)
+    names = np.array(['{}{}'.format(args.name,k) for k in range(len(RA))])
+
+    _save_sample(names,RA,Dec,z,args.outfile)
 
 if __name__ == '__main__':
     _main()
