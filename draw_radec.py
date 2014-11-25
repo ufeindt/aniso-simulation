@@ -118,11 +118,11 @@ def _process_args(args):
 def _save_sample(name,RA,Dec,z,outfile):
     """
     """
-    out = np.zeros((len(name),),dtype=[('Name', 'S6'), ('RA', '<f8'), ('Dec', '<f8'), ('z', '<f8')])
-    out['Name'] = name
+    out = np.zeros((len(name),),dtype=[('NAME', 'S6'), ('RA', '<f8'), ('DEC', '<f8'), ('Z', '<f8')])
+    out['NAME'] = name
     out['RA'] = RA
-    out['Dec'] = Dec
-    out['z'] = z
+    out['DEC'] = Dec
+    out['Z'] = z
 
     _save_structured_array(out,outfile)
 

@@ -17,6 +17,32 @@ import numpy as np
 import cosmo_tools as ct
 from cosmo_tools import _d2r, _O_M, _H_0, _c
 
+def _load_from_files(*filenames,**kwargs):
+    """
+    """
+    z_range = kwargs.pop('z_range',(0.015,0.1))
+    keys = kwargs.pop('keys',['Name','RA','Dec','z'])
+    dtypes = kwargs.pop('dtype',[object,float,float,float])
+    case_sensitive = kwargs.pop('case_sensitive',False)
+
+    if not case_sensitive:
+        keys = [a.upper() for a in keys]
+
+    out = None
+
+    for filename in filenames:
+        tmp = np.genfromtxt(filename,names=True,comments='#',dtype=None,
+                            case_sensitive=case_sensitive)
+        tmp2 = np.zeros((len(tmp),),dtype=zip(keys,dtypes))
+        for key in keys:
+            tmp2[key] = tmp[key]
+        if out is None:
+            out = tmp2
+        else:
+            out = np.concatenate((out,tmp2))
+            
+    return (out[key] for key in keys)
+
 def simulate_l_b_coverage(Npoints,MW_exclusion=10,ra_range=(-180,180),dec_range=(-90,90),
                           output_frame='galactic'):
     """
