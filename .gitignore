@@ -1,0 +1,9 @@
+*.ipynb
+*.pkl
+*.dat
+*.pyc
+*.sh
+files2copy
+results
+plots
+ned_queries
