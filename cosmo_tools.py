@@ -24,7 +24,7 @@ from scipy.optimize import leastsq
 # --------------- #
 
 _c = 299792.458     # speed of light in km s^-1
-_h = 70.            # Hubble constant in km s^-1 Mpc^-1
+_H_0 = 70.            # Hubble constant in km s^-1 Mpc^-1
 _d2r = np.pi/180    # conversion factor from degrees to radians
 _O_M = 0.3          # default matter density
 
@@ -32,7 +32,7 @@ _O_M = 0.3          # default matter density
 # -- Basic functions -- #
 # --------------------- #
 
-def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_h,v_dip=None,v_cart=None,v_mon=0,
+def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
         coords=None,**kwargs):
     """
     Luminosity distance in Mpc

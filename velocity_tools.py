@@ -18,7 +18,7 @@ import cPickle
 
 from copy import deepcopy
 
-from cosmo_tools import _O_M, _h, _d2r, _c
+from cosmo_tools import _O_M, _H_0, _d2r, _c
 
 # ------------------------- #
 # -- Velocity components -- #
@@ -34,7 +34,7 @@ def ang_sep(l1,b1,l2,b2):
                  np.sin(b1 * _d2r) * np.sin(b2 * _d2r))
     return np.arccos(cos_theta) / _d2r
 
-def velocity(z,l,b,z_A,l_A,b_A,R_A,delta,O_M=_O_M,H_0=_h):
+def velocity(z,l,b,z_A,l_A,b_A,R_A,delta,O_M=_O_M,H_0=_H_0):
     """
     v_pec for a constant spherical overdensity projected to line of sight
     
@@ -94,7 +94,7 @@ def load_superclusters():
 
     return superclusters
 
-def v_attractor(z,l,b,od_factors,O_M=_O_M,H_0=_h):
+def v_attractor(z,l,b,od_factors,O_M=_O_M,H_0=_H_0):
     '''
     velocity field for SSC + SGW
     '''
@@ -121,7 +121,7 @@ def v_dipole_comp(l,b):
            np.sin(b*_d2r))
     return out
 
-def v_tidal_comp(z,l,b,O_M=_O_M,H_0=_h):
+def v_tidal_comp(z,l,b,O_M=_O_M,H_0=_H_0):
     '''
     returns the components of the tidal velocity model in the following order:
     U_x, U_y, U_z, U_xx, U_yy, U_zz, U_xy, U_xz, U_yz
@@ -136,7 +136,7 @@ def v_tidal_comp(z,l,b,O_M=_O_M,H_0=_h):
     
     return np.concatenate([v_bulk,v_diag,v_offdiag])
 
-def v_tidal_comp_trless(z,l,b,O_M=_O_M,H_0=_h):
+def v_tidal_comp_trless(z,l,b,O_M=_O_M,H_0=_H_0):
     '''
     returns the components of the tidal velocity model 
     without monopole in the following order:
@@ -612,7 +612,7 @@ def sexagesimal(deg,delimeters=[':',':']):
     return out
     
 
-def attractor_mass(delta,R_A,H_0=_h,O_M=_O_M):
+def attractor_mass(delta,R_A,H_0=_H_0,O_M=_O_M):
     G = 6.67384e-11 # in m^3 kg^-1 s^-2
     M_solar = 1.9891e30 # in kg
     Mpc = 3.05987e22 # metres in an Mpc

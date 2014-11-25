@@ -15,7 +15,7 @@ Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 import numpy as np
 
 import cosmo_tools as ct
-from cosmo_tools import _d2r, _O_M, _h, _c
+from cosmo_tools import _d2r, _O_M, _H_0, _c
 
 def simulate_l_b_coverage(Npoints,MW_exclusion=10,ra_range=(-180,180),dec_range=(-90,90),
                           output_frame='galactic'):
@@ -110,7 +110,7 @@ def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
 
     return z
          
-def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_h,v_dispersion=0,
+def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,v_dispersion=0,
                   intrinsic_dispersion=0.1,error_distribution=(0.1,0.02),
                   error_min=0.03):
     """
