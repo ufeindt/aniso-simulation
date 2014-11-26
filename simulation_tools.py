@@ -19,29 +19,79 @@ from cosmo_tools import _d2r, _O_M, _H_0, _c
 
 def _load_from_files(*filenames,**kwargs):
     """
+    Load data from files.
+    
+    Requires files to contain header with keys for each column.
+    Only columns according to kwargs keys are returned. If keys are
+    given dtype must be given (use object for strings).
+
+    Can filter for redshifts and will look for redshift key (named 
+    'redshift' or starting with 'z'). If none is found or results 
+    ambiguous, it must be stated manually.
+
+    Returns list of as many numpy array as keys (+ fileindex array 
+    if return_fileindex is True)
     """
-    z_range = kwargs.pop('z_range',(0.015,0.1))
+    if 'keys' in kwargs.keys() and 'dtype' not in kwargs.keys():
+        raise ValueError('Please set stype as well.')
+    elif 'keys' in kwargs.keys() and 'dtype' in kwargs.keys():
+        if len(kwargs['keys']) != len(kwargs['dtype']):
+            raise ValueError('Length of keys and dtype must match.')
+
+    z_range = kwargs.pop('z_range',None)
+    z_key = kwargs.pop('z_key',None)
     keys = kwargs.pop('keys',['Name','RA','Dec','z'])
     dtypes = kwargs.pop('dtype',[object,float,float,float])
     case_sensitive = kwargs.pop('case_sensitive',False)
+    comments = kwargs.pop('comments','#')
+    delimiter = kwargs.pop('delimeter',None)
+    return_fileindex = kwargs.pop('return_fileindex',False)
+
+    if kwargs != {}:
+        unknown_kw = ' '.join(kwargs.keys())
+        raise TypeError('load_from_files got unknown keyword arguments: {}'.format(unknown_kw))
 
     if not case_sensitive:
         keys = [a.upper() for a in keys]
 
-    out = None
+    if z_range is not None and z_key is None:
+        z_keys = [key for key in keys 
+                  if key[0].upper() == 'Z' or key.upper() == "REDSHIFT"] 
+        if len(z_keys) == 0:
+            raise ValueError('Failed to determine z_key, please set kwarg z_key')
+        elif len(z_keys) > 1:
+            raise ValueError('Ambiguous z_key, please set kwargs z_key manually')
+        else:
+            z_key = z_keys[0]
 
-    for filename in filenames:
-        tmp = np.genfromtxt(filename,names=True,comments='#',dtype=None,
-                            case_sensitive=case_sensitive)
-        tmp2 = np.zeros((len(tmp),),dtype=zip(keys,dtypes))
-        for key in keys:
-            tmp2[key] = tmp[key]
+    out = None
+    fileindex = []
+
+    for k,filename in enumerate(filenames):
+        tmp = np.genfromtxt(filename,names=True,comments=comments,dtype=None,
+                            case_sensitive=case_sensitive,delimiter=delimiter)
+        
+        if z_range is None:
+            tmp2 = np.zeros((len(tmp),),dtype=zip(keys,dtypes))
+            fileindex.extend([k for a in range(len(tmp))])
+            for key in keys:
+                tmp2[key] = tmp[key]
+        else:
+            z_filter = (tmp[z_key] >= z_range[0]) & (tmp[z_key] < z_range[1]) 
+            tmp2 = np.zeros((np.sum(z_filter),),dtype=zip(keys,dtypes))
+            fileindex.extend([k for a in range(np.sum(z_filter))])
+            for key in keys:
+                tmp2[key] = tmp[key][z_filter]
+                    
         if out is None:
             out = tmp2
         else:
             out = np.concatenate((out,tmp2))
             
-    return (out[key] for key in keys)
+    if return_fileindex:
+        return [out[key] for key in keys] + [np.array(fileindex)]
+    else:
+        return [out[key] for key in keys]
 
 def simulate_l_b_coverage(Npoints,MW_exclusion=10,ra_range=(-180,180),dec_range=(-90,90),
                           output_frame='galactic'):
