@@ -162,7 +162,7 @@ def _process_args(args):
         if args.sim_z_pdf_bins is None:
             args.sim_z_pdf_bins = np.linspace(args.sim_redshift[0],args.sim_redshift[1],len(args.sim_z_pdf)+1)
         elif (args.sim_z_pdf_bins[0] != args.sim_redshift[0] or args.sim_z_pdf_bins[-1] != args.sim_redshift[1]
-              or True in [a>b for a,b in zip(args.sim_z_pdf_bin[:-1],args.sim_z_pdf_bin[1:])]):
+              or True in [a>b for a,b in zip(args.sim_z_pdf_bins[:-1],args.sim_z_pdf_bins[1:])]):
             raise ValueError('Invalid simulation redshift pdf bins')
         else:
             args.z_pdf_bins = np.array(args.sim_z_pdf_bins)
