@@ -15,6 +15,7 @@ Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 import numpy as np
 
 import cosmo_tools as ct
+import velocity_tools as vt
 from cosmo_tools import _d2r, _O_M, _H_0, _c
 
 def load_from_files(*filenames,**kwargs):
@@ -68,6 +69,7 @@ def load_from_files(*filenames,**kwargs):
     fileindex = []
 
     for k,filename in enumerate(filenames):
+        print filename
         tmp = np.genfromtxt(filename,names=True,comments=comments,dtype=None,
                             case_sensitive=case_sensitive,delimiter=delimiter)
         
