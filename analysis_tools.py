@@ -37,6 +37,7 @@ def fit_dipole(data,opt):
     results['chi2_0'] = ct.residual_chi2(np.zeros(3),data,options)
     results['chi2'] = ct.residual_chi2(fit[0],data,options)
     results['dchi2'] = results['chi2_0'] - results['chi2']
+    results['n_SNe'] = np.sum([len(a) for a in data])
 
     results['fit'] = [fit[0]]
     results['cov'] = [fit[1]]
@@ -67,6 +68,7 @@ def fit_dipole_shear(data,opt):
     results['chi2_0'] = ct.residual_chi2(np.zeros(9),data,options)
     results['chi2'] = ct.residual_chi2(fit[0],data,options)
     results['dchi2'] = results['chi2_0'] - results['chi2']
+    results['n_SNe'] = np.sum([len(a) for a in data])
 
     results['fit'] = [fit[0]]
     results['cov'] = [fit[1]]
@@ -156,6 +158,7 @@ def fit_dipole_shear_trless(data,opt):
     results['chi2_0'] = ct.residual_chi2(np.zeros(8),data,options)
     results['chi2'] = ct.residual_chi2(fit[0],data,options)
     results['dchi2'] = results['chi2_0'] - results['chi2']
+    results['n_SNe'] = np.sum([len(a) for a in data])
 
     results['fit'] = [fit[0]]
     results['cov'] = [fit[1]]
@@ -244,6 +247,8 @@ def get_Q_min_max(data,options,delta=90,l_grid=None,b_grid=None,full_opt=True,
                'l_min': ((l_min -180)%360)+180,
                'b_min': b_min,
                'dQ': Q_max - Q_min}
+
+    results['n_SNe'] = np.sum([len(a) for a in data])
 
     if return_Q_grid:
         results['l_grid'] = l_grid

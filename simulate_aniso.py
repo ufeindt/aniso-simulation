@@ -12,7 +12,7 @@ Note: The convention for spherical coordinates used here is
 Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 """
 
-__version__ = '0.1' 
+__version__ = '0.2' 
 
 import numpy as np
 import os
@@ -66,6 +66,21 @@ def _def_parser():
     parser.add_argument('-p','--parameters',default=None,nargs='*',type=float,
                         help='non-default parameters for signal')
 
+    parser.add_argument('--sim-number',default=0,type=int,
+                        help='number of additional SNe')
+    parser.add_argument('--sim-redshift',default=None,nargs=2,
+                        help='simulation redshift boundaries',type=float)
+    parser.add_argument('--sim-ra-range',default=None,nargs=2,
+                        help='simulation RA range in degrees',type=float)
+    parser.add_argument('--sim-dec-range',default=None,nargs=2,
+                        help='simulation Dec range in degrees',type=float)
+    parser.add_argument('--sim-z-pdf',default=None,nargs='*',
+                        help='simulation pdf values for non-flat distribution (if --z-cdf-bins not stated, redshift range will be split uniformly)',type=float)
+    parser.add_argument('--sim-z-pdf-bins',default=None,nargs='*',
+                        help='simulation redshift bins for non-flat distribution',type=float)
+    parser.add_argument('--sim-zone-of-avoidance',default=None,nargs=1,
+                        help='size of the ZoA for simulation in degrees',type=float)
+
     return parser
       
 def _process_args(args):
@@ -100,6 +115,63 @@ def _process_args(args):
     messages.append('Parameters: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
                                                           for val in args.parameters])))
 
+    messages = ['','Number of additional SNe: {}'.format(args.number)]
+
+    if args.sim_redshift is None:
+        args.sim_redshift = [0.015,0.1]
+        messages.append('Redshift range: {:.3f} -- {:.3f} (default)'.format(*args.sim_redshift))
+    elif args.sim_redshift[0] > args.sim_redshift[1]:
+        raise ValueError('Invalid simulation redshift range: {:.3f} -- {:.3f}'.format(*args.sim_redshift))
+    else:
+        messages.append('Redshift range: {:.3f} -- {:.3f}'.format(*args.sim_redshift))
+
+    if args.sim_ra_range is None:
+        args.sim_ra_range = [-180.,180.]
+        messages.append('RA range: {:.1f} deg -- {:.1f} deg (default)'.format(*args.sim_ra_range))
+    elif (args.sim_ra_range[0] < -180 or args.sim_ra_range[1] > 180 
+          or args.sim_ra_range[0] >  args.sim_ra_range[1]):
+        raise ValueError('Invalid simulation RA range: {:.1f} -- {:.1f}'.format(*args.sim_ra_range))
+    else:
+        messages.append('RA range: {:.1f} deg -- {:.1f} deg'.format(*args.sim_ra_range))
+
+    if args.sim_dec_range is None:
+        args.sim_dec_range = [-90.,90.]
+        messages.append('Dec range: {:.1f} deg -- {:.1f} deg (default)'.format(*args.sim_dec_range))
+    elif (args.sim_dec_range[0] < -90 or args.sim_dec_range[1] > 90 
+          or args.sim_dec_range[0] >  args.sim_dec_range[1]):
+        raise ValueError('Invalid simulation Dec range: {:.1f} -- {:.1f}'.format(*args.sim_dec_range))
+    else:
+        messages.append('Dec range: {:.1f} deg -- {:.1f} deg'.format(*args.sim_dec_range))
+
+    
+    if args.sim_zone_of_avoidance is None:
+        args.sim_zone_of_avoidance = 10.
+        messages.append('ZoA size: {:.1f} deg (default)'.format(args.sim_zone_of_avoidance))
+    else:
+        messages.append('ZoA size: {:.1f} deg'.format(args.sim_zone_of_avoidance))
+
+    if args.sim_z_pdf is None:
+        if args.sim_z_pdf_bins is None:
+            args.sim_z_pdf = np.ones(1)
+            args.sim_z_pdf_bins = np.array(args.sim_redshift)
+        else:
+            args.sim_z_pdf_bins = np.array(args.sim_z_pdf_bins)
+            args.sim_z_pdf = np.ones(len(args.sim_z_pdf_bins)-1)/(len(args.sim_z_pdf_bins)-1)         
+    else:
+        args.sim_z_pdf = np.array(args.sim_z_pdf)/np.sum(np.array(args.sim_z_pdf))
+        if args.sim_z_pdf_bins is None:
+            args.sim_z_pdf_bins = np.linspace(args.sim_redshift[0],args.sim_redshift[1],len(args.sim_z_pdf)+1)
+        elif (args.sim_z_pdf_bins[0] != args.sim_redshift[0] or args.sim_z_pdf_bins[-1] != args.sim_redshift[1]
+              or True in [a>b for a,b in zip(args.sim_z_pdf_bin[:-1],args.sim_z_pdf_bin[1:])]):
+            raise ValueError('Invalid simulation redshift pdf bins')
+        else:
+            args.z_pdf_bins = np.array(args.sim_z_pdf_bins)
+
+    messages.append('Redshift pdf: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
+                                                           for val in args.sim_z_pdf])))
+    messages.append('Redshift pdf bins: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
+                                                                 for val in args.sim_z_pdf_bins])))
+
     if args.verbosity:
         print '\n'.join(messages)    
     
@@ -117,36 +189,22 @@ def _make_outfile_name(args):
 
     return outfile
 
-def _get_peculiar_velocities(mode,p,l,b,z):
-    v_fcts = {0: (lambda p_,l_,b_,z_: 
-                  np.zeros(len(z_))),
-              1: (lambda p_,l_,b_,z_: 
-                  np.array(map(lambda x1,x2: p_.dot(vt.v_dipole_comp(x1,x2)),l_,b_))),
-              2: (lambda p_,l_,b_,z_: 
-                  np.array(map(lambda x1,x2,x3: p_.dot(vt.v_tidal_comp(x1,x2,x3)),z_,l_,b_))),
-              3: (lambda p_,l_,b_,z_:
-                  np.array(map(lambda x1,x2,x3: vt.convert_cartesian([1,x2,x3]).
-                               dot(vt.v_attractor(x1,x2,x3,[p_[0],0])),z_,l_,b_))),
-              4: (lambda p_,l_,b_,z_:
-                  np.array(map(lambda x1,x2,x3: vt.convert_cartesian([1,x2,x3]).
-                               dot(vt.v_attractor(x1,x2,x3,p_)),z_,l_,b_)))}
-
-    return v_fcts[mode](p,l,b,z)
-
-def _simulate_aniso(num_sim,names,l,b,z,v,verbosity):
+def _simulate_aniso(num_sim,names,l,b,z,v,verbosity,add):
     if verbosity > 1:
         print
         print 'Running simulations.'
 
-    results = {'dipole': {},
-               'dipole+shear': {},
-               'dipole+shear_trless': {},
-               'sr_90': {},
-               'sr_45': {},
-               'sr_22.5:': {},
-               'sr_nw_90': {},
-               'sr_nw_45': {},
-               'sr_nw_22.5:': {}}
+    results = {
+        #'dipole': {},
+        'dipole+shear': {},
+        #'dipole+shear_trless': {},
+        #'sr_90': {},
+        #'sr_45': {},
+        #'sr_22.5:': {},
+        #'sr_nw_90': {},
+        #'sr_nw_45': {},
+        #'sr_nw_22.5:': {}
+    }
 
     analysis_fcts = {'dipole': at.fit_dipole,
                      'dipole+shear': at.fit_dipole_shear,
@@ -166,24 +224,26 @@ def _simulate_aniso(num_sim,names,l,b,z,v,verbosity):
     for k in xrange(num_sim):
         if verbosity > 2:
             print 'Realization {}'.format(k)
-        data, options = st.simulate_data(names,l,b,z,v=v)
+        data, options = st.simulate_data(names,l,b,z,v=v,add=add)
         for key in sorted(results.keys()):
             analysis = analysis_fcts[key](data,options)
             for skey,result in analysis.items():
                 if skey not in results[key].keys():
                     if type(result) == list:
                         results[key][skey] = result
-                    elif type(result) in [float, np.float64]:
+                    elif type(result) in [float,np.float16,np.float32,np.float64,
+                                          int, np.int8,np.int16,np.int32,np.int64]:
                         results[key][skey] = np.array([result])
                     else:
-                        raise TypeError('Output of analysis functions must be a dictionary of lists and floats.')
+                        raise TypeError('Output of analysis functions must be a dictionary of lists, integers and floats.')
                 else:
                     if type(result) == list:
                         results[key][skey].extend(result)
-                    elif type(result) in [float, np.float64]:
+                    elif type(result) in [float,np.float16,np.float32,np.float64,
+                                          int, np.int8,np.int16,np.int32,np.int64]:
                         results[key][skey] = np.append(results[key][skey],result)
                     else:
-                        raise TypeError('Output of analysis functions must be a dictionary of lists and floats.')
+                        raise TypeError('Output of analysis functions must be a dictionary of lists, integers and floats.')
 
     return results
 
@@ -255,14 +315,27 @@ def _main():
     names, RA, Dec, z = st.load_from_files(*args.files,z_range=args.redshift)
     l, b = ct.radec2gcs(RA, Dec)
 
-    v = _get_peculiar_velocities(args.signal_mode,args.parameters,l,b,z)
+    v = st.get_peculiar_velocities(args.signal_mode,args.parameters,l,b,z)
 
     if args.verbosity > 0:
         print 
         print 'Data loaded.'
         print 'Number of SNe: {}'.format(len(z))
 
-    results = _simulate_aniso(args.number,names,l,b,z,v,verbosity=args.verbosity)
+    add = {
+        'number': args.sim_number,
+        'z_range': args.sim_redshift,
+        'ra_range': args.sim_ra_range,
+        'dec_range': args.sim_dec_range,
+        'z_pdf': args.sim_z_pdf,
+        'z_pdf_bins': args.sim_z_pdf_bins,
+        'ZoA': args.sim_zone_of_avoidance,
+        'z_limits': args.redshift,
+        'signal_mode': args.signal_mode,
+        'parameters': args.parameters
+    }
+
+    results = _simulate_aniso(args.number,names,l,b,z,v,verbosity=args.verbosity,add=add)
     
     arg_dict = vars(args)
     del arg_dict['number']

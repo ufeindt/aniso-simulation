@@ -17,7 +17,7 @@ import numpy as np
 import cosmo_tools as ct
 from cosmo_tools import _d2r, _O_M, _H_0, _c
 
-def _load_from_files(*filenames,**kwargs):
+def load_from_files(*filenames,**kwargs):
     """
     Load data from files.
     
@@ -191,9 +191,28 @@ def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
          
 def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,v_dispersion=0,
                   intrinsic_dispersion=0.1,error_distribution=(0.1,0.02),
-                  error_min=0.03):
+                  error_min=0.03,add=None):
     """
     """
+    if add is not None and add['number'] > 0:
+        new_names = np.array(['add{:6.0f}'.format(k) for k in xrange(add['number'])])
+        new_z = simulate_z_coverage(add['number'],add['z_range'],
+                                    add['z_pdf'],add['z_pdf_bins'])
+        new_RA, new_Dec = simulate_l_b_coverage(add['number'],add['ZoA'],
+                                               add['ra_range'],add['dec_range'],'j2000')
+        new_l, new_b = ct.radec2gcs(new_RA,new_Dec)
+
+        z_filter = (new_z >= add['z_range'][0]) & (new_z < add['z_range'][1])
+        names = np.concatenate((names,new_names[z_filter]))
+        z = np.concatenate((z,new_z[z_filter]))
+        l = np.concatenate((l,new_l[z_filter]))
+        b = np.concatenate((b,new_b[z_filter]))
+
+        if v is not None:
+            new_v = get_peculiar_velocities(add['signal_mode'],add['parameters'],
+                                            new_l[z_filter],new_b[z_filter],new_z[z_filter])
+            v = np.concatenate((v,new_v))
+
     if v is None:
         v = np.zeros(len(z)) 
 
@@ -217,3 +236,19 @@ def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,v_dispersion=0,
     options['offsets'] = fit[0]
         
     return data, options
+
+def get_peculiar_velocities(mode,p,l,b,z):
+    v_fcts = {0: (lambda p_,l_,b_,z_: 
+                  np.zeros(len(z_))),
+              1: (lambda p_,l_,b_,z_: 
+                  np.array(map(lambda x1,x2: p_.dot(vt.v_dipole_comp(x1,x2)),l_,b_))),
+              2: (lambda p_,l_,b_,z_: 
+                  np.array(map(lambda x1,x2,x3: p_.dot(vt.v_tidal_comp(x1,x2,x3)),z_,l_,b_))),
+              3: (lambda p_,l_,b_,z_:
+                  np.array(map(lambda x1,x2,x3: vt.convert_cartesian([1,x2,x3]).
+                               dot(vt.v_attractor(x1,x2,x3,[p_[0],0])),z_,l_,b_))),
+              4: (lambda p_,l_,b_,z_:
+                  np.array(map(lambda x1,x2,x3: vt.convert_cartesian([1,x2,x3]).
+                               dot(vt.v_attractor(x1,x2,x3,p_)),z_,l_,b_)))}
+
+    return v_fcts[mode](p,l,b,z)
