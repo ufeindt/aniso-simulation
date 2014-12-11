@@ -115,7 +115,7 @@ def _process_args(args):
     messages.append('Parameters: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
                                                           for val in args.parameters])))
 
-    messages = ['','Number of additional SNe: {}'.format(args.number)]
+    messages.extend(['','Number of additional SNe: {}'.format(args.sim_number)])
 
     if args.sim_redshift is None:
         args.sim_redshift = [0.015,0.1]
