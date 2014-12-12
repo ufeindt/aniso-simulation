@@ -69,7 +69,6 @@ def load_from_files(*filenames,**kwargs):
     fileindex = []
 
     for k,filename in enumerate(filenames):
-        print filename
         tmp = np.genfromtxt(filename,names=True,comments=comments,dtype=None,
                             case_sensitive=case_sensitive,delimiter=delimiter)
         
@@ -204,7 +203,7 @@ def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,v_dispersion=0,
                                                add['ra_range'],add['dec_range'],'j2000')
         new_l, new_b = ct.radec2gcs(new_RA,new_Dec)
 
-        z_filter = (new_z >= add['z_range'][0]) & (new_z < add['z_range'][1])
+        z_filter = (new_z >= add['z_limits'][0]) & (new_z < add['z_limits'][1])
         names = np.concatenate((names,new_names[z_filter]))
         z = np.concatenate((z,new_z[z_filter]))
         l = np.concatenate((l,new_l[z_filter]))
