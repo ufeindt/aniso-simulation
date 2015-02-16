@@ -33,12 +33,12 @@ _O_M = 0.3          # default matter density
 # --------------------- #
 
 def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
-        coords=None,**kwargs):
+        coords=None,dipole_bonvin=False,**kwargs):
     """
     Luminosity distance in Mpc
 
     Arguments:
-    z -- redshift
+    z -- redshift (observed, i.e. velocities are subtracted)
 
     Keyword arguments:
     O_M    -- matter density
@@ -55,6 +55,8 @@ def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
     v_mon  -- monopole velocity in km s^-1
     coords -- coordinates of the SN, e.g. [RA, Dec] or [l,b]
               system needs to match that used for v_dip
+    
+    dipole_bonvin -- use dipole as in Bonvin et al. 2006b
     """
     if O_L is None:
         Flat = True
@@ -68,6 +70,29 @@ def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
                                   O_K * (1+x) ** 2 +
                                   O_L * (1+x)**(3*(1+w)))
 
+    if coords or v_mon != 0:
+        if not Flat:
+            print 'Warning: dipole not properly implemented for',
+            print 'non-flat cosmology'
+        if v_dip is not None:
+            cos_theta = (np.cos(coords[1]*_d2r) * np.cos(v_dip[2]*_d2r) *
+                        np.cos((coords[0]-v_dip[1])*_d2r) +
+                        np.sin(coords[1]*_d2r) * np.sin(v_dip[2]*_d2r))
+            v_proj = v_mon + v_dip[0]*cos_theta
+        elif v_cart is not None:
+            l = coords[0]
+            b = coords[1]
+            v_proj =  (v_mon + v_cart[0]*np.cos(b*_d2r)*np.cos(l*_d2r) +
+                       v_cart[1]*np.cos(b*_d2r)*np.sin(l*_d2r)+ 
+                       v_cart[2]*np.sin(b*_d2r))
+        else:
+            v_proj = v_mon
+    else:
+        v_proj = 0
+        
+    if not dipole_bonvin:
+        z = (1 + z) / (1 + v_proj/_c) - 1 # see Harrison 1974
+
     integral=romberg(H_rec,0,z)
 
     if O_K == 0:
@@ -78,29 +103,11 @@ def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
     else:
         result = (_c * (1+z) / H_0 / np.sqrt(O_K) *
                   np.sinh(np.sqrt(O_K)*integral))
-    
-    if not coords and v_mon == 0:
-        return result
-    else:
-        if not Flat:
-            print 'Warning: dipole not properly implemented for',
-            print 'non-flat cosmology'
-        if v_dip is not None:
-            cos_theta = (np.cos(coords[1]*_d2r) * np.cos(v_dip[2]*_d2r) *
-                        np.cos((coords[0]-v_dip[1])*_d2r) +
-                        np.sin(coords[1]*_d2r) * np.sin(v_dip[2]*_d2r))
-            result_dip = ((1+z)**2 * H_rec(z) / H_0 *
-                          (v_mon + v_dip[0]*cos_theta))
-        elif v_cart is not None:
-            l = coords[0]
-            b = coords[1]
-            result_dip = ((1+z)**2 * H_rec(z) / H_0 *
-                          (v_mon + v_cart[0]*np.cos(b*_d2r)*np.cos(l*_d2r) +
-                           v_cart[1]*np.cos(b*_d2r)*np.sin(l*_d2r)+ 
-                           v_cart[2]*np.sin(b*_d2r)))
-        else:
-            result_dip = ((1+z)**2 * H_rec(z) / H_0 * v_mon)
-        return result-result_dip
+            
+    if dipole_bonvin:
+        return result - (1+z)**2 * H_rec(z) / H_0 * v_proj
+    return result
+
 
 def d_p(z,**kwargs):
     """
