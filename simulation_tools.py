@@ -217,7 +217,7 @@ def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,v_dispersion=0,
     if v is None:
         v = np.zeros(len(z)) 
 
-    z4mu = z - v/_c
+    z4mu = (1 - z) / (1 - v/_c) - 1
     if v_dispersion > 0:
         z4mu += np.random.normal(0,v_dispersion,len(z))
     
