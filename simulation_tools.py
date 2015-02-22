@@ -161,25 +161,31 @@ def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
         if z_pdf_bins is None:
             z_pdf = np.ones(1)
             z_pdf_bins = np.array(z_range)
+            widths = np.array([z_range[1]-z_range[0]])
         else:
             z_pdf_bins = np.array(z_pdf_bins)
             z_pdf = np.ones(len(z_pdf_bins)-1)/(len(z_pdf_bins)-1)
     else:
-        z_pdf = np.array(z_pdf,dtype=float)/np.sum(np.array(z_pdf))
         if z_pdf_bins is None:
             z_pdf_bins = np.linspace(z_range[0],z_range[1],len(z_pdf)+1)
-        elif (z_pdf_bins[0] != z_range[0] or z_pdf_bins[-1] != z_range[1]
+        elif (np.abs(z_pdf_bins[0] - z_range[0]) / z_range[0] > 1e-9 
+              or np.abs(z_pdf_bins[-1] - z_range[1]) / z_range[1] > 1e-9 
               or True in [a>b for a,b in zip(z_pdf_bins[:-1],z_pdf_bins[1:])]):
-            print z_pdf_bins[0] != z_range[0]
-            print z_pdf_bins[1] != z_range[-1]
+            print np.abs(z_pdf_bins[0] - z_range[0]) / z_range[0] > 1e-9 
+            print np.abs(z_pdf_bins[-1] - z_range[1]) / z_range[1] > 1e-9 
             print [a>b for a,b in zip(z_pdf_bins[:-1],z_pdf_bins[1:])]
             print True in [a>b for a,b in zip(z_pdf_bins[:-1],z_pdf_bins[1:])]
             raise ValueError('Invalid z_pdf_bins')
         else:
             z_pdf_bins = np.array(z_pdf_bins)
-    
+
+    widths = z_pdf_bins[1:]-z_pdf_bins[:-1]
+    z_pdf = np.array(z_pdf,dtype=float)/np.sum(np.array(z_pdf*widths))
+    print np.sum(z_pdf*widths)
+    print z_pdf
+
     if len(z_pdf) > 1:
-        z_cdf = np.cumsum(z_pdf)
+        z_cdf = np.cumsum(z_pdf*widths)
         val_uni = np.random.random(NPoints)
         val_bins = np.array([np.where(z_cdf > val)[0][0] for val in val_uni])
         val_rem = ((val_uni - z_cdf[val_bins-1])%1)/((z_cdf[val_bins]-z_cdf[val_bins-1])%1)
