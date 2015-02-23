@@ -33,7 +33,7 @@ _O_M = 0.3          # default matter density
 # --------------------- #
 
 def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
-        coords=None,dipole_bonvin=False,**kwargs):
+        coords=None,v_mode='hui',**kwargs):
     """
     Luminosity distance in Mpc
 
@@ -56,8 +56,11 @@ def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
     coords -- coordinates of the SN, e.g. [RA, Dec] or [l,b]
               system needs to match that used for v_dip
     
-    dipole_bonvin -- use dipole as in Bonvin et al. 2006b
+    v_mode -- hui, bonvin or none
     """
+    if v_mode is None:
+        v_mode = 'none'
+
     if O_L is None:
         Flat = True
         O_L = 1 - O_M
@@ -90,7 +93,7 @@ def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
     else:
         v_proj = 0
         
-    if not dipole_bonvin:
+    if v_mode == 'none':
         z = (1 + z) / (1 + v_proj/_c) - 1 # see Harrison 1974
 
     integral=romberg(H_rec,0,z)
@@ -104,10 +107,14 @@ def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
         result = (_c * (1+z) / H_0 / np.sqrt(O_K) *
                   np.sinh(np.sqrt(O_K)*integral))
             
-    if dipole_bonvin:
+    if v_mode == 'bonvin':
         return result - (1+z)**2 * H_rec(z) / H_0 * v_proj
-    return result
-
+    elif v_mode == 'hui':
+        return result * (1 + v_proj / _c) - (1+z)**2 * H_rec(z) / H_0 * v_proj
+    elif v_mode == 'none':
+        return result
+    else:
+        raise ValueError('Unknown v_mode: {}'.format(v_mode))
 
 def d_p(z,**kwargs):
     """
