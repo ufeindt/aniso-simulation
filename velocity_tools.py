@@ -29,18 +29,6 @@ def ang_sep(l1,b1,l2,b2):
     Angular separation between two positions on the sky 
     (l1,b1) and (l2,b2) in degrees.
     """
-    # cos_theta = (np.cos(b1 * _d2r) * np.cos(b2 * _d2r) *
-    #              np.cos((l1 - l2) * _d2r) +
-    #              np.sin(b1 * _d2r) * np.sin(b2 * _d2r))
-    # print 'cos ', np.arccos(cos_theta) / _d2r
-    # return np.arccos(cos_theta) / _d2r
-
-    # sin_theta = np.sqrt(np.sin((b1 - b2) * _d2r / 2) ** 2 +
-    #                     np.sin((l1 - l2) * _d2r / 2) ** 2 *
-    #                     np.cos(b1 * _d2r) * np.cos(b2 * _d2r))
-    # print '2sin', 2 * np.arcsin(sin_theta) / _d2r
-    # return 2 * np.arcsin(sin_theta) / _d2r
-
     sin_theta = np.sqrt((np.cos(b2 * _d2r) * np.sin((l1 - l2) * _d2r)) ** 2 +
                         (np.cos(b1 * _d2r) * np.sin(b2 * _d2r) - 
                          np.sin(b1 * _d2r) * np.cos(b2 * _d2r) * np.cos((l1 - l2) * _d2r)) ** 2)
@@ -48,11 +36,7 @@ def ang_sep(l1,b1,l2,b2):
                  np.cos((l1 - l2) * _d2r) +
                  np.sin(b1 * _d2r) * np.sin(b2 * _d2r))
     tan_theta = sin_theta/cos_theta
-    # print sin_theta, cos_theta, tan_theta
-    # print 'sin ', np.arcsin(sin_theta) / _d2r
-    # print 'tan ', np.arctan(tan_theta) / _d2r
     return np.arctan2(sin_theta,cos_theta) / _d2r
-
 
 def velocity(z,l,b,z_A,l_A,b_A,R_A,delta,O_M=_O_M,H_0=_H_0):
     """
