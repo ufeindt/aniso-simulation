@@ -28,8 +28,8 @@ _z_bins = [0.015,0.035,0.045,0.06,0.1]
 _d2r = np.pi / 180
 
 _nest = True
-_markers = ['ro','bo','go','ko','yo']
-_cmaps = ['Reds','Blues','Greens','Greys','Oranges']
+_markers = ['ro','bo','go','ko','yo','mo']
+_cmaps = ['Reds','Blues','Greens','Greys','Oranges','Purples']
 
 # --------------- #
 # -- Utilities -- #
