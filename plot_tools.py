@@ -15,18 +15,18 @@ Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 import numpy as np
 import matplotlib.pyplot as plt
 import healpy as hp
-import cPickle
+#import cPickle
 from mpl_toolkits.basemap import Basemap
 
-import analysis_tools as at
+#import analysis_tools as at
 import cosmo_tools as ct
 
 from analysis_tools import _z_bins
 from cosmo_tools import _d2r
 
-_nest = False
-_markers = ['ro','bo','go','ko','yo']
-_cmaps = ['Reds','Blues','Greens','Greys','Oranges']
+_nest = True
+_markers = ['ko','bo','go','ro','yo','mo']
+_cmaps = ['Reds','Blues','Greens','Greys','Oranges','Purples']
 
 # --------------- #
 # -- Utilities -- #
@@ -95,13 +95,14 @@ def basic_basemap(projection='moll',figsize=(8,6),color='k',
             ['N',0,0],['S',np.pi,0]]
 
     if frame == 'galactic':
-        plt.xlabel('l',fontsize=18,color=label_color)
-        plt.ylabel('b',fontsize=18,color=label_color)
+        plt.xlabel('$l$',fontsize=18,color=label_color)
+        plt.ylabel('$b$',fontsize=18,color=label_color)
 
         if marks:
             for item in Marked:
                 mark=color+'.'
-                l1,b1 = ct.radec2gcs(item[2]*180/np.pi,(np.pi/2-item[1])*180/np.pi)
+                l1,b1 = ct.radec2gcs(item[2]*180/np.pi,
+                                     (np.pi/2-item[1])*180/np.pi)
                 l_temp,b_temp = m([l1],[b1])
                 if item[0] in ['N','S']:    
                     plt.plot(l_temp,b_temp,color+'+',ms=8,lw=2)
@@ -210,7 +211,7 @@ def healpy_basemap(values,NSIDE=4,pixels=None,steps=4,vmin=None,
         return fig, m, cbar
 
 def plot_results_l_b(result_l,result_b,prefix,NSIDE=4,names=None,cumulative=False,
-                     figsize=(8,6),save2file=None,legend='upper left',title=None,
+                     figsize=None,save2file=None,legend='upper left',title=None,
                      z_bins=None,cmaps=None,hist=False,pixels=None,steps=4,vmin=None,
                      vmax=None,color='k',frame='galactic',marks=True,nest=_nest,
                      cbar=False,cbar_label=None,cbar_orientation='horizontal',
@@ -233,8 +234,20 @@ def plot_results_l_b(result_l,result_b,prefix,NSIDE=4,names=None,cumulative=Fals
     if not hist and len(markers) < len(z_bins) - 1:
         raise ValueError('Require as many markers as z bins')
 
+    if figsize is not None:
+        if title:
+            figsize=(8,5.4)
+        else:
+            figsize=(8,5.1)
+
     fig, m  = basic_basemap(projection=projection,figsize=figsize,
                             color=color,frame=frame,marks=marks)
+
+    if title:
+        plt.title(title, fontsize=20)
+        plt.subplots_adjust(left=0.08, right=0.98, top=0.93, bottom=0.06)
+    else:
+        plt.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.06)
 
     for z_min,z_max,cmap,marker,l,b in zip(z_bins[:-1],z_bins[1:],cmaps,markers,
                                            result_l[prefix],result_b[prefix]):
@@ -254,7 +267,7 @@ def plot_results_l_b(result_l,result_b,prefix,NSIDE=4,names=None,cumulative=Fals
             plt.plot(x,y,marker,ms=8,label=zlabel)
 
     if legend is not None:
-        plt.legend(loc=legend)   
+        plt.legend(loc=legend,framealpha=1)       
 
     return fig, m
 
@@ -262,10 +275,12 @@ def plot_results_l_b(result_l,result_b,prefix,NSIDE=4,names=None,cumulative=Fals
 # -- Other plots -- #
 # ----------------- #
 
-def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),save2file=None,
-                 z_range=None,y_range=None,y_label=None,legend='upper left',
-                 connect_w_line=True,title=None,z_bins=None,markers=None,median_fct=np.median,
-                 errors=None):
+def plot_results(result, prefixes=None, names=None, cumulative=False, lw=2,
+                 figsize=(8,6), save2file=None, z_range=None, y_range=None,
+                 y_label=None, legend='upper left', connect_w_line=True,
+                 title=None, z_bins=None, markers=None, median_fct=np.median,
+                 errors=None, n_max=-1, linestyles=None, scatter_fct=None,
+                 legend_fontsize=10):
     """
     """
     if prefixes is None:
@@ -286,6 +301,12 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
     if len(markers) < len(prefixes):
         raise ValueError('Require as many markers as prefixes')
 
+    if linestyles is None:
+        linestyles = ['-' for a in markers]
+
+    if len(linestyles) < len(markers):
+        raise ValueError('Require as many linestyles as markers')
+
     if z_range is None:
         if cumulative:
             z_range = (z_bins[1]-0.01,z_bins[-1]+0.01)
@@ -295,25 +316,37 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
     if cumulative:
         z = z_bins[1:]
     else:
-        z = [np.mean([z_min,z_max]) for z_min, z_max in zip(z_bins[:-1],z_bins[1:])]
+        z = [np.mean([z_min,z_max]) 
+             for z_min, z_max in zip(z_bins[:-1],z_bins[1:])]
     
     fig = plt.figure(figsize=figsize)
-    for (prefix,name,marker) in zip(prefixes,names,markers):
-        if errors is None:
-            plt.plot(z,[median_fct(a) for a in result[prefix]],marker,ms=8,label=name)
-        else:
-            plt.errorbar(z,[median_fct(a) for a in result[prefix]],
-                         yerr=[median_fct(a) for a in errors[prefix]],
-                         fmt=marker,ms=8,label=name)
+    for (prefix,name,marker,ls) in zip(prefixes,names,markers,linestyles):
         if connect_w_line:
-            plt.plot(z,[median_fct(a) for a in result[prefix]],marker[0]+'-')
+            marker = '%s%s'%(marker,ls)
+        
+        y = np.array([median_fct(a[:n_max]) 
+                      for a in result[prefix]][:len(z_bins)-1])
+
+        if errors is None:
+            plt.plot(z,y,marker,ms=8,label=name,lw=lw)
+            if scatter_fct is not None:
+                yscatter = np.array([scatter_fct(a[:n_max]) 
+                                     for a in result[prefix]][:len(z_bins)-1])
+                plt.plot(z, y+yscatter, marker[0], ls='--', lw=lw/2.)
+                plt.plot(z, y-yscatter, marker[0], ls='--', lw=lw/2.)
+        else:
+            yerr = [median_fct(a[:n_max]) 
+                    for a in errors[prefix][:len(z_bins)-1]]
+            plt.errorbar(z,y,yerr=yerr,fmt=marker,ms=8,label=name,lw=lw)
+        # if connect_w_line:
+        #     plt.plot(z,y,marker[0]+'-')
         
     if not cumulative:
         for z_val in z_bins:
             plt.plot([z_val,z_val],[-1e6,1e6],'k--',scaley=False)
     
     if legend is not None:
-        plt.legend(loc=legend)
+        plt.legend(loc=legend,framealpha=1,fontsize=legend_fontsize)
         
     plt.xlim(z_range)
         
@@ -324,15 +357,17 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
     plt.yticks(fontsize=14)
     
     if cumulative:
-        plt.xlabel(r'$z_{max}$',fontsize=22)
+        plt.xlabel(r'$z_{\rm max}$',fontsize=22)
     else:
-        plt.xlabel(r'$z_{mean}$',fontsize=22)        
+        plt.xlabel(r'$z_{\rm centre}$',fontsize=22)        
     
     if y_label is not None:
         plt.ylabel(y_label,fontsize=22)
 
     if title is not None:
         plt.title(title,fontsize=20)
+
+    plt.subplots_adjust(top=0.95, right=0.98, left=0.14)
 
     if save2file is not None:
         plt.savefig(save2file)

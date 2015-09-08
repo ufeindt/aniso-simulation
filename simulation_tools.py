@@ -34,7 +34,7 @@ def load_from_files(*filenames,**kwargs):
     if return_fileindex is True)
     """
     if 'keys' in kwargs.keys() and 'dtype' not in kwargs.keys():
-        raise ValueError('Please set stype as well.')
+        raise ValueError('Please set dtype as well.')
     elif 'keys' in kwargs.keys() and 'dtype' in kwargs.keys():
         if len(kwargs['keys']) != len(kwargs['dtype']):
             raise ValueError('Length of keys and dtype must match.')
@@ -196,9 +196,9 @@ def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
 
     return z
          
-def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,v_dispersion=0,
+def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
                   intrinsic_dispersion=0.1,error_distribution=(0.1,0.02),
-                  error_min=0.03,add=None):
+                  error_min=0.03,add=None,v_mode='hui'):
     """
     """
     if add is not None and add['number'] > 0:
@@ -223,11 +223,12 @@ def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,v_dispersion=0,
     if v is None:
         v = np.zeros(len(z)) 
 
-    z4mu = (1 - z) / (1 - v/_c) - 1
-    if v_dispersion > 0:
-        z4mu += np.random.normal(0,v_dispersion,len(z))
+    #z4mu = (1 - z) / (1 - v/_c) - 1
+    #if v_dispersion > 0:
+    #    z4mu += np.random.normal(0,v_dispersion,len(z))
     
-    mu = np.array([ct.mu(z_,O_M=O_M,H_0=H_0) for z_ in z4mu])
+    mu = np.array([ct.mu(z_,O_M=O_M,H_0=H_0,v_mon=v_,v_mode=v_mode) 
+                   for z_,v_ in zip(z,v)])
     
     dmu = np.random.normal(error_distribution[0],error_distribution[1],len(z))
 

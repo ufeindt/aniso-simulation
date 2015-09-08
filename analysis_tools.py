@@ -25,6 +25,9 @@ from cosmo_tools import _d2r
 
 _z_bins = [0.015,0.025,0.035,0.045,0.06,0.1]
 
+l_SSC, b_SSC = 306.44, 29.71
+l_CMB, b_CMB = 276.,   30. 
+
 def fit_dipole(data,opt):
     options = deepcopy(opt)
     options['v_comp'] = [np.array(map(lambda x: vt.v_dipole_comp(x[4],x[5]),a))
@@ -343,6 +346,7 @@ def p_value(signal,noise):
 def load_result_file(filename):
     """
     """
+    #print filename
     return cPickle.load(file(filename,'r'))
 
 def load_results(key,skeys,prefixes,signal_mode=1,cumulative=False,
@@ -366,9 +370,13 @@ def load_results(key,skeys,prefixes,signal_mode=1,cumulative=False,
     
     for prefix in prefixes:
         for z_min, z_max in zip(z_mins,z_maxs):
-            filestart = '{}{}_s{}_{:.3f}_{:.3f}'.format(resultdir,prefix,signal_mode,z_min,z_max).replace('.','')
+            filestart = '{}{}_s{}_{:.3f}_{:.3f}'.format(
+                resultdir,prefix,signal_mode,z_min,z_max
+            ).replace('.','')
+            
             results = load_result_file('{}.pkl'.format(filestart))
             for k,skey in enumerate(skeys):
+                #print key, skey
                 out[k][prefix].append(results[key][skey])
             
     if len(out) > 1:
@@ -406,3 +414,97 @@ def load_p_values(key,skey,prefixes,signal_mode=1,cumulative=False,
             p[key].append(p_value(slist,nlist))
 
     return p
+
+#-----------#
+#-- Other --#
+#-----------#
+def nmad(vals, m=None, factor=1.4826):
+    if m is None:
+        m = np.median(vals)
+    return np.median(np.abs(vals-m)) * factor
+
+def ang_sep_err(l1,b1,l2,b2,cov1,cov2):
+    cov_tmp1 = np.zeros((3,3))
+    cov_tmp1[1:,1:] = cov1             
+    v1, cov_v1 = convert_cartesian([1,l1,b1],cov_tmp1)
+    
+    cov_tmp2 = np.zeros((3,3))
+    cov_tmp2[1:,1:] = cov2    
+    v2, cov_v2 = convert_cartesian([1,l2,b2],cov_tmp2)
+                                                      
+    cos_as = v1.dot(v2)                               
+    cov_cos_as = v1.dot(cov_v2).dot(v1) + v2.dot(cov_v1).dot(v2) 
+                                                                 
+    ang_sep = np.arccos(cos_as) / dp._d2r                        
+    err_ang_sep = np.sqrt(cov_cos_as/(1 - cos_as ** 2))  / dp._d2r
+                                                                  
+    return ang_sep, err_ang_sep
+
+
+def wpercentile(a, q, weights=None):
+   """Compute weighted percentiles *q* [%] of input 1D-array *a*."""
+
+   a = np.asarray(a)
+   if a.ndim > 1:
+       raise NotImplementedError("implemented on 1D-arrays only")
+
+   if weights is None:
+       weights = np.ones_like(a)
+   else:
+       assert len(weights)==len(a), "incompatible weight and input arrays"
+       assert (weights>0).all(), "weights are not always strictly positive"
+
+   isorted = np.argsort(a)
+   sa = a[isorted]
+   sw = weights[isorted]
+   sumw = np.cumsum(sw)                        # Strictly increasing
+   scores = 1e2*(sumw - 0.5*sw)/sumw[-1]      # 0-100 score at center of bins
+
+   def interpolate(q):
+       i = scores.searchsorted(q)
+       if i==0:                        # Below 1st score
+           val = sa[0]
+       elif i==len(a):                 # Above last score
+           val = sa[-1]
+       else:                           # Linear score interpolation
+           val = (sa[i-1]*(scores[i] - q) + sa[i]*(q - scores[i-1])) / \
+                 (scores[i] - scores[i-1])
+       return val
+
+   out = np.array([ interpolate(qq) for qq in np.atleast_1d(q) ])
+
+   return out.reshape(np.shape(q))      # Same shape as input q
+
+
+def median_stats(a, weights=None, axis=None, scale=1.4826, corrected=True):
+   """Compute [weighted] median and :func:`nMAD` of array *a* along
+   *axis*. Weighted computation is implemented for *axis* = None
+   only."""
+
+   if weights is not None:
+       if axis is not None:
+           raise NotImplementedError("implemented on 1D-arrays only")
+       else:
+           med  = wpercentile(a, 50., weights=weights)
+           nmad = wpercentile(np.absolute(a - med), 50., weights=weights)*scale
+   else:
+       med = np.median(a, axis=axis)
+       if axis is None:
+           umed = med                      # Scalar
+       else:
+           umed = np.expand_dims(med, axis) # Same ndim as a
+       nmad = np.median(np.absolute(a - umed), axis=axis) * scale
+
+   if corrected:
+       # Finite-sample correction on nMAD (Croux & Rousseeuw, 1992)
+       if axis is None:
+           n = np.size(a)
+       else:
+           n = np.shape(a)[axis]
+       if n<=9:
+           c = [0,0,1.196,1.495,1.363,1.206,1.200,1.140,1.129,1.107][n]
+       else:
+           c = n/(n-0.8)
+       nmad *= c
+
+   return med,nmad
