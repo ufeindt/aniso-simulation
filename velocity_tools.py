@@ -90,11 +90,11 @@ def load_superclusters():
                          ('157+003+007',219.1,5.28,13.3)]
 
     superclusters = []
-    sum_dense = np.sum([dense for RADec, dist, dense, diam in superclusters_raw])
+    sum_dense = np.sum([dense - 1 for RADec, dist, dense, diam in superclusters_raw])
     for RADec, dist, dense, diam in superclusters_raw:
         RA = float(RADec[:3])
         Dec = float(RADec[3:7])
-        superclusters += [ct.radec2gcs(RA,Dec)+(dist/3e3,dense/sum_dense,diam/2)]
+        superclusters += [ct.radec2gcs(RA,Dec)+(dist/3e3,(dense - 1)/sum_dense,diam/1.4)]
 
     return superclusters
 

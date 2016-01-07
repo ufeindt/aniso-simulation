@@ -45,8 +45,8 @@ example_shear = vt.flatten_shear_matrix(rhs.T.dot(example_shear.dot(rhs)))
 parameter_default = [[],
                      example_dipole,
                      np.concatenate((example_dipole,example_shear)),
-                     np.array([2.78]),
-                     np.array([1.82,46.11])]
+                     np.array([2.78]), # maybe wrong
+                     np.array([1.75,15.2])]
 
 def _def_parser():
     parser = ArgumentParser(description='Simulate random realizations of distance')
@@ -195,7 +195,7 @@ def _simulate_aniso(num_sim,names,l,b,z,v,verbosity,add):
         print 'Running simulations.'
 
     results = {
-        #'dipole': {},
+        'dipole': {},
         'dipole+shear': {},
         #'dipole+shear_trless': {},
         #'sr_90': {},
@@ -312,15 +312,27 @@ def _main():
 
     outfile = _make_outfile_name(args)
 
-    names, RA, Dec, z = st.load_from_files(*args.files,z_range=args.redshift)
-    l, b = ct.radec2gcs(RA, Dec)
+    if len(args.files) > 0:
+        names, RA, Dec, z = st.load_from_files(*args.files,z_range=args.redshift)
+        l, b = ct.radec2gcs(RA, Dec)        
+        v = st.get_peculiar_velocities(args.signal_mode,args.parameters,l,b,z)
 
-    v = st.get_peculiar_velocities(args.signal_mode,args.parameters,l,b,z)
-
-    if args.verbosity > 0:
-        print 
-        print 'Data loaded.'
-        print 'Number of SNe: {}'.format(len(z))
+        if args.verbosity > 0:
+            print 
+            print 'Data loaded.'
+            print 'Number of SNe: {}'.format(len(z))
+    else:
+        names = np.array([])
+        RA  = np.array([])
+        Dec = np.array([])
+        z = np.array([])
+        l = np.array([])
+        b = np.array([])
+        v = np.array([])
+        
+        if args.verbosity > 0:
+            print 
+            print 'No data loaded.'
 
     add = {
         'number': args.sim_number,

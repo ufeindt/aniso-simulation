@@ -34,7 +34,7 @@ def load_from_files(*filenames,**kwargs):
     if return_fileindex is True)
     """
     if 'keys' in kwargs.keys() and 'dtype' not in kwargs.keys():
-        raise ValueError('Please set stype as well.')
+        raise ValueError('Please set dtype as well.')
     elif 'keys' in kwargs.keys() and 'dtype' in kwargs.keys():
         if len(kwargs['keys']) != len(kwargs['dtype']):
             raise ValueError('Length of keys and dtype must match.')
@@ -95,8 +95,10 @@ def load_from_files(*filenames,**kwargs):
         return [out[key] for key in keys]
 
 def simulate_l_b_coverage(Npoints,MW_exclusion=10,ra_range=(-180,180),dec_range=(-90,90),
-                          output_frame='galactic'):
+                          output_frame='galactic',radius=None):
     """
+    radius -- (radius, l, b) force coordinates to be within radius of (l, b)
+              Only works in galactic coordinates so far
     """
     # ----------------------- #
     # --                   -- #
@@ -109,7 +111,7 @@ def simulate_l_b_coverage(Npoints,MW_exclusion=10,ra_range=(-180,180),dec_range=
 
         return ra,dec
 
-    def _draw_without_MW_(Npoints_,ra_range_,dec_sin_range_,MW_exclusion_):
+    def _draw_without_MW_(Npoints_,ra_range_,dec_sin_range_,MW_exclusion_,radius_):
         """
         """
         
@@ -117,12 +119,19 @@ def simulate_l_b_coverage(Npoints,MW_exclusion=10,ra_range=(-180,180),dec_range=
         while( len(l) < Npoints_ ):
             ra,dec = _draw_radec_(Npoints_ - len(l),ra_range_,dec_sin_range_)
             l_,b_ = ct.radec2gcs(ra,dec)
-            if output_frame == 'galactic':
-                l = np.concatenate((l,l_[np.abs(b_)>MW_exclusion_]))
-                b = np.concatenate((b,b_[np.abs(b_)>MW_exclusion_]))
+
+            if radius is not None:
+                as_mask = vt.ang_sep(radius[1], radius[2], l_, b_) < radius[0]
             else:
-                l = np.concatenate((l,ra[np.abs(b_)>MW_exclusion_]))
-                b = np.concatenate((b,dec[np.abs(b_)>MW_exclusion_]))                
+                as_mask = np.ones(len(l_), dtype=bool)
+
+            mask = as_mask & (np.abs(b_)>MW_exclusion_)
+            if output_frame == 'galactic':
+                l = np.concatenate((l,l_[mask]))
+                b = np.concatenate((b,b_[mask]))
+            else:
+                l = np.concatenate((l,ra[mask]))
+                b = np.concatenate((b,dec[mask]))                
 
         return l,b
 
@@ -133,18 +142,19 @@ def simulate_l_b_coverage(Npoints,MW_exclusion=10,ra_range=(-180,180),dec_range=
     if output_frame not in ['galactic','j2000']:
         raise ValueError('output_frame must "galactic" or "j2000"')
 
-    if ra_range[0] < -180 or ra_range[1] > 180 or ra_range[0] > ra_range[1]:
-        raise ValueError('ra_range must be contained in [-180,180]')
+    if ra_range[0] < -180 or ra_range[1] > 360 or ra_range[0] > ra_range[1]:
+        raise ValueError('ra_range must be contained in [-180,360]')
 
     if dec_range[0] < -90 or dec_range[1] > 90 or dec_range[0] > dec_range[1]:
-        raise ValueError('dec_range must be contained in [-180,180]')
+        raise ValueError('dec_range must be contained in [-90,90]')
 
     dec_sin_range = (np.sin(dec_range[0]*_d2r),np.sin(dec_range[1]*_d2r)) 
 
-    if MW_exclusion > 0.:
-        return _draw_without_MW_(Npoints,ra_range,dec_sin_range,MW_exclusion)
+    if MW_exclusion > 0. or radius is not None:
+        return _draw_without_MW_(Npoints, ra_range, dec_sin_range,
+                                 MW_exclusion, radius)
     else:
-        ra,dec = _draw_radec_(Npoints,ra_range,dec_sin_range)
+        ra,dec = _draw_radec_(Npoints, ra_range, dec_sin_range)
         if output_frame == 'galactic':
             return ct.radec2gcs(ra,dec)
         else:
@@ -181,8 +191,8 @@ def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
 
     widths = z_pdf_bins[1:]-z_pdf_bins[:-1]
     z_pdf = np.array(z_pdf,dtype=float)/np.sum(np.array(z_pdf*widths))
-    print np.sum(z_pdf*widths)
-    print z_pdf
+    #print np.sum(z_pdf*widths)
+    #print z_pdf
 
     if len(z_pdf) > 1:
         z_cdf = np.cumsum(z_pdf*widths)
@@ -196,9 +206,9 @@ def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
 
     return z
          
-def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,v_dispersion=0,
+def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
                   intrinsic_dispersion=0.1,error_distribution=(0.1,0.02),
-                  error_min=0.03,add=None):
+                  error_min=0.03,add=None,v_mode='hui'):
     """
     """
     if add is not None and add['number'] > 0:
@@ -223,11 +233,12 @@ def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,v_dispersion=0,
     if v is None:
         v = np.zeros(len(z)) 
 
-    z4mu = (1 - z) / (1 - v/_c) - 1
-    if v_dispersion > 0:
-        z4mu += np.random.normal(0,v_dispersion,len(z))
+    #z4mu = (1 - z) / (1 - v/_c) - 1
+    #if v_dispersion > 0:
+    #    z4mu += np.random.normal(0,v_dispersion,len(z))
     
-    mu = np.array([ct.mu(z_,O_M=O_M,H_0=H_0) for z_ in z4mu])
+    mu = np.array([ct.mu(z_,O_M=O_M,H_0=H_0,v_mon=v_,v_mode=v_mode) 
+                   for z_,v_ in zip(z,v)])
     
     dmu = np.random.normal(error_distribution[0],error_distribution[1],len(z))
 

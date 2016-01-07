@@ -3,7 +3,9 @@
 *.pyc
 *.sh
 *.dat
+*.pdf
 files2copy
-results
+results*
 plots
 data
+.ropeproject
