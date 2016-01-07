@@ -97,19 +97,24 @@ def healpy_values(l, b, values, NSIDE=None, nest=_nest, project_j2000=False):
 
 def basic_basemap(projection='moll',figsize=(8,6),color='k',
                   frame='galactic',marks=True,label_color='k',
-                  **kwargs):
+                  lon_0=0, lat_0=0, **kwargs):
     """
     """
     if label_color is None:
         label_color = color
 
     fig = plt.figure(figsize=figsize)
-    m = Basemap(projection=projection,lon_0=0,lat_0=0,celestial=True,**kwargs)
+    m = Basemap(projection=projection,lon_0=lon_0,lat_0=lat_0,celestial=True,
+                **kwargs)
     m.drawparallels(np.arange(-90.,90.,30.),color=color,linewidth=0.5)
-    m.drawmeridians(np.arange(-180.,180.,60.)[1:],color=color,linewidth=0.5)   
+    if color == 'k':
+        m.drawmeridians(np.arange(-180.,180.,60.),color=color,linewidth=0.5)   
+    else:
+        m.drawmeridians(np.arange(-180.,180.,60.)[1:],color=color,linewidth=0.5)   
 
-    pol_l = [180,120,60,0,-60,-120,-180,0,0,0,0]
-    pol_b = [0,0,0,0,0,0,0,30,60,-30,-60]
+    pol_l = np.array([180,120,60,0,-60,-120,-180,0,0,0,0]) 
+    pol_b = np.array([0,0,0,0,0,0,0,30,60,-30,-60])
+    pol_l[-5:] += lon_0
     pol = ['180','120','60','0','300','240','','30','60','-30','-60']  
 
     tick_x,tick_y=m(pol_l,pol_b)
@@ -446,7 +451,7 @@ def plot_results_l_b(result_l,result_b,prefix,NSIDE=4,names=None,cumulative=Fals
 def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),save2file=None,
                  z_range=None,y_range=None,y_label=None,legend='upper left',
                  connect_w_line=True,title=None,z_bins=None,markers=None,median_fct=np.median,
-                 errors=None):
+                 errors=None, linestyles=None):
     """
     """
     if prefixes is None:
@@ -467,6 +472,11 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
     if len(markers) < len(prefixes):
         raise ValueError('Require as many markers as prefixes')
 
+    if linestyles is None:
+        linestyles = ['-' for k in range(len(prefixes))]
+    elif len(linestyles) < len(prefixes):
+        raise ValueError('Require as many linestyles as prefixes')
+
     if z_range is None:
         if cumulative:
             z_range = (z_bins[1]-0.01,z_bins[-1]+0.01)
@@ -479,7 +489,7 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
         z = [np.mean([z_min,z_max]) for z_min, z_max in zip(z_bins[:-1],z_bins[1:])]
     
     fig = plt.figure(figsize=figsize)
-    for (prefix,name,marker) in zip(prefixes,names,markers):
+    for (prefix,name,marker,ls) in zip(prefixes,names,markers,linestyles):
         if errors is None:
             plt.plot(z,[median_fct(a) for a in result[prefix]],marker,ms=8,label=name)
         else:
@@ -487,7 +497,7 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
                          yerr=[median_fct(a) for a in errors[prefix]],
                          fmt=marker,ms=8,label=name)
         if connect_w_line:
-            plt.plot(z,[median_fct(a) for a in result[prefix]],marker[0]+'-')
+            plt.plot(z,[median_fct(a) for a in result[prefix]], marker[0]+ls)
         
     if not cumulative:
         for z_val in z_bins:
