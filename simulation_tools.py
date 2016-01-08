@@ -18,6 +18,8 @@ import cosmo_tools as ct
 import velocity_tools as vt
 from cosmo_tools import _d2r, _O_M, _H_0, _c
 
+from scipy.optimize import leastsq
+
 def load_from_files(*filenames,**kwargs):
     """
     Load data from files.
@@ -208,7 +210,8 @@ def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
          
 def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
                   intrinsic_dispersion=0.1,error_distribution=(0.1,0.02),
-                  error_min=0.03,add=None,v_mode='hui'):
+                  error_min=0.03,add=None,v_mode='hui',fit_cosmo=False,
+                  determine_sig_int=False):
     """
     """
     if add is not None and add['number'] > 0:
@@ -250,9 +253,19 @@ def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
         
     data = [zip(names,z,mu,dmu,l,b)]
     options = {'O_L':None,'w':-1,'dM':0,'H_0':H_0,'O_M':O_M}
-    fit, options = ct.fit_w_sig_int([0], data, options)
-    options['offsets'] = fit[0]
+    if fit_cosmo:
+        if determine_sig_int:
+            fit, options = ct.fit_w_sig_int([0], data, options, fast=True)
+        else:
+            options['sig_int'] = [intrinsic_dispersion for x in data]
+            d_ls = [np.array([ct.d_l(a,**options) for a in z])]
+            fit = leastsq(ct.vresiduals, [0], args=([z], [mu], [dmu], d_ls, options))
         
+        options['offsets'] = fit[0]
+    else:
+        options['sig_int'] = [intrinsic_dispersion for x in data]
+        options['offsets'] = [0 for x in data]
+
     return data, options
 
 def get_peculiar_velocities(mode,p,l,b,z):
