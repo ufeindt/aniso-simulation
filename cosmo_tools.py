@@ -198,17 +198,20 @@ def residual_chi2(p,data,options,dof=None):
     else:
         return np.dot(a,a)/dof
 
-def vresiduals(p,zs,mus,dmus,d_ls,options):
+def vresiduals(p,data,options):
     """
     Residual function for fitting when d_l is known (i.e. cosmo fit beforehand)
-    zs, mus, dmus should be lists of arrays of z, mu and dmu, respectively, for each subsample
-    d_ls should be list of arrays of pre-calculated luminosity distances;
-    Otherwise syntax similar to residuals; 
+    Syntax similar to residuals but data must also include luminosity distance; 
     O_M, O_L, w, H_0 and dM must all be in options;
-    Can be used to determin offset
+    Can be used to determine offset
     """
     opt = deepcopy(options)
     
+    zs = [np.array([a[1] for a in b]) for b in data]
+    mus = [np.array([a[2] for a in b]) for b in data]
+    dmus = [np.array([a[3] for a in b]) for b in data]
+    d_ls = [np.array([a[6] for a in b]) for b in data]
+
     if 'offsets' not in opt.keys():
         opt['offsets'] = p[:len(zs)]
         k = len(zs)
@@ -262,8 +265,8 @@ def vresiduals(p,zs,mus,dmus,d_ls,options):
     if len(out.shape) == 1: return out
     else: return out.transpose()[0]
 
-def vresidual_chi2(p,zs,mus,dmus,d_ls,options,dof=None):
-    a = vresiduals(p,zs,mus,dmus,d_ls,options)
+def vresidual_chi2(p,data,options,dof=None):
+    a = vresiduals(p,data,options)
     if dof is None:
         return np.dot(a,a)
     else:
@@ -272,12 +275,14 @@ def vresidual_chi2(p,zs,mus,dmus,d_ls,options,dof=None):
 def fit_w_sig_int(initial, data, options, sig_int_step=0.1, tol=1e-3, fast=False):
     """
     fast won't work unless cosmo fit already
+    data must include luminosity distances
     """
     if fast:
-         z = [np.array([a[1] for a in b]) for b in data]
-         mu = [np.array([a[2] for a in b]) for b in data]
-         dmu = [np.array([a[3] for a in b]) for b in data]
-         d_ls = [np.array([a[6] for a in b]) for b in data]
+        fit_fct = vresiduals
+        chi2_fct = vresidual_chi2
+    else:
+        fit_fct = residuals
+        chi2_fct = residual_chi2
 
     dof = sum([len(a) for a in data]) - len(initial)
     sig_int = 0.
@@ -285,12 +290,8 @@ def fit_w_sig_int(initial, data, options, sig_int_step=0.1, tol=1e-3, fast=False
     chi2 = 2
 
     # Check whether reduced chi^2 already < 1
-    if fast:
-        fit = leastsq(vresiduals,initial,args=(z,mu,dmu,d_ls,options))
-        chi2 = vresidual_chi2(fit[0],z,mu,dmu,d_ls,options,dof=dof)
-    else:
-        fit = leastsq(residuals,initial,args=(data,options))
-        chi2 = residual_chi2(fit[0],data,options,dof=dof)
+    fit = leastsq(fit_fct,initial,args=(data,options))
+    chi2 = chi2_fct(fit[0],data,options,dof=dof)
     initial = fit[0]
     
     #print chi2, residual_chi2(fit[0],data,options)
@@ -303,12 +304,8 @@ def fit_w_sig_int(initial, data, options, sig_int_step=0.1, tol=1e-3, fast=False
     while chi2 > 1:
         sig_int += sig_int_step
         options['sig_int'] = [sig_int for x in data]
-        if fast:
-            fit = leastsq(vresiduals,initial,args=(z,mu,dmu,d_ls,options))
-            chi2 = vresidual_chi2(fit[0],z,mu,dmu,d_ls,options,dof=dof)
-        else:
-            fit = leastsq(residuals,initial,args=(data,options))
-            chi2 = residual_chi2(fit[0],data,options,dof=dof)
+        fit = leastsq(fit_fct,initial,args=(data,options))
+        chi2 = chi2_fct(fit[0],data,options,dof=dof)
         initial = fit[0]
         #print sig_int, chi2
 
@@ -316,12 +313,8 @@ def fit_w_sig_int(initial, data, options, sig_int_step=0.1, tol=1e-3, fast=False
     #chi2 = chi2[-2:]
     sig_mid = np.mean(sig_range)
     options['sig_int'] = [sig_mid for x in data]
-    if fast:
-        fit = leastsq(vresiduals,fit[0],args=(z,mu,dmu,d_ls,options))
-        chi2 = vresidual_chi2(fit[0],z,mu,dmu,d_ls,options,dof=dof)
-    else:
-        fit = leastsq(residuals,fit[0],args=(data,options))
-        chi2 = residual_chi2(fit[0],data,options,dof=dof)
+    fit = leastsq(fit_fct,fit[0],args=(data,options))
+    chi2 = chi2_fct(fit[0],data,options,dof=dof)
 
     while np.abs(chi2 - 1) > tol:
         #print sig_range
@@ -331,12 +324,8 @@ def fit_w_sig_int(initial, data, options, sig_int_step=0.1, tol=1e-3, fast=False
             sig_range[1] = sig_mid
         sig_mid = np.mean(sig_range)
         options['sig_int'] = [sig_mid for x in data]
-        if fast:
-            fit = leastsq(vresiduals,fit[0],args=(z,mu,dmu,d_ls,options))
-            chi2 = vresidual_chi2(fit[0],z,mu,dmu,d_ls,options,dof=dof)
-        else:
-            fit = leastsq(residuals,fit[0],args=(data,options))
-            chi2 = residual_chi2(fit[0],data,options,dof=dof)
+        fit = leastsq(fit_fct,fit[0],args=(data,options))
+        chi2 = chi2_fct(fit[0],data,options,dof=dof)
             
     #print chi2, residual_chi2(fit[0],data,options)
 

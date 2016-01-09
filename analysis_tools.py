@@ -33,17 +33,12 @@ def fit_dipole(data,opt):
     options['v_comp'] = [np.array(map(lambda x: vt.v_dipole_comp(x[4],x[5]),a))
                          for a in data]
 
-    z = [np.array([a[1] for a in b]) for b in data]
-    mu = [np.array([a[2] for a in b]) for b in data]
-    dmu = [np.array([a[3] for a in b]) for b in data]
-    d_ls = [np.array([a[6] for a in b]) for b in data]
-
-    fit = leastsq(ct.vresiduals,np.zeros(3),args=(z,mu,dmu,d_ls,options),full_output=1)
+    fit = leastsq(ct.vresiduals,np.zeros(3),args=(data,options),full_output=1)
 
     results = {}
     
-    results['chi2_0'] = ct.vresidual_chi2(np.zeros(3),z,mu,dmu,d_ls,options)
-    results['chi2'] = ct.vresidual_chi2(fit[0],z,mu,dmu,d_ls,options)
+    results['chi2_0'] = ct.vresidual_chi2(np.zeros(3),data,options)
+    results['chi2'] = ct.vresidual_chi2(fit[0],data,options)
     results['dchi2'] = results['chi2_0'] - results['chi2']
     results['n_SNe'] = np.sum([len(a) for a in data])
 
@@ -69,17 +64,12 @@ def fit_dipole_shear(data,opt):
                                                                 H_0=options['H_0']),a))
                          for a in data]
 
-    z = [np.array([a[1] for a in b]) for b in data]
-    mu = [np.array([a[2] for a in b]) for b in data]
-    dmu = [np.array([a[3] for a in b]) for b in data]
-    d_ls = [np.array([a[6] for a in b]) for b in data]
-
-    fit = leastsq(ct.vresiduals,np.zeros(9),args=(z,mu,dmu,d_ls,options),full_output=1)
+    fit = leastsq(ct.vresiduals,np.zeros(9),args=(data,options),full_output=1)
 
     results = {}
     
-    results['chi2_0'] = ct.vresidual_chi2(np.zeros(9),z,mu,dmu,d_ls,options)
-    results['chi2'] = ct.vresidual_chi2(fit[0],z,mu,dmu,d_ls,options)
+    results['chi2_0'] = ct.vresidual_chi2(np.zeros(9),data,options)
+    results['chi2'] = ct.vresidual_chi2(fit[0],data,options)
     results['dchi2'] = results['chi2_0'] - results['chi2']
     results['n_SNe'] = np.sum([len(a) for a in data])
 
