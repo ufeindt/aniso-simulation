@@ -83,7 +83,7 @@ def _process_args(args):
     if args.z_pdf is None:
         if args.z_pdf_bins is None:
             args.z_pdf = np.ones(1)
-            args.z_pdf_bins = np.array(z_range)
+            args.z_pdf_bins = np.array(args.redshift)
         else:
             args.z_pdf_bins = np.array(args.z_pdf_bins)
             args.z_pdf = np.ones(len(args.z_pdf_bins)-1)/(len(args.z_pdf_bins)-1)         
@@ -131,8 +131,8 @@ def _save_structured_array(array,outfile,delimiter=' '):
     """
     header = ' '.join(array.dtype.names)
 
-    fmt = ['%f' if a[1][:2] == '<f' else '%i' if a[1][:2] == '<i' else '%s' 
-           for a in array.dtype.descr]
+    # fmt = ['%f' if a[1][:2] == '<f' else '%i' if a[1][:2] == '<i' else '%s' 
+    #        for a in array.dtype.descr]
 
     np.savetxt(outfile,array,delimiter=delimiter,header=header,fmt=('%s','%f','%f','%f'))
 

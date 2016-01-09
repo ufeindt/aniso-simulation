@@ -27,13 +27,13 @@ _c = 299792.458     # speed of light in km s^-1
 _H_0 = 70.            # Hubble constant in km s^-1 Mpc^-1
 _d2r = np.pi/180    # conversion factor from degrees to radians
 _O_M = 0.3          # default matter density
+_v_mode = 'hui'
 
 # --------------------- #
 # -- Basic functions -- #
 # --------------------- #
-
 def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
-        coords=None,v_mode='hui',**kwargs):
+        coords=None,v_mode=_v_mode,**kwargs):
     """
     Luminosity distance in Mpc
 
@@ -57,6 +57,7 @@ def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
               system needs to match that used for v_dip
     
     v_mode -- hui, bonvin or none
+    memo   -- dict for memoization
     """
     if v_mode is None:
         v_mode = 'none'
@@ -96,7 +97,7 @@ def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
     if v_mode == 'none':
         z = (1 + z) / (1 + v_proj/_c) - 1 # see Harrison 1974
 
-    integral=romberg(H_rec,0,z)
+    integral = romberg(H_rec,0,z)
 
     if O_K == 0:
         result = _c * (1+z) / H_0 * integral
@@ -108,13 +109,13 @@ def d_l(z,O_M=_O_M,O_L=None,w=-1,H_0=_H_0,v_dip=None,v_cart=None,v_mon=0,
                   np.sinh(np.sqrt(O_K)*integral))
             
     if v_mode == 'bonvin':
-        return result - (1+z)**2 * H_rec(z) / H_0 * v_proj
+        result = result - (1+z)**2 * H_rec(z) / H_0 * v_proj
     elif v_mode == 'hui':
-        return result * (1 + v_proj / _c) - (1+z)**2 * H_rec(z) / H_0 * v_proj
-    elif v_mode == 'none':
-        return result
-    else:
+        result = result * (1 + v_proj / _c) - (1+z)**2 * H_rec(z) / H_0 * v_proj
+    elif v_mode != 'none':
         raise ValueError('Unknown v_mode: {}'.format(v_mode))
+
+    return result
 
 def d_p(z,**kwargs):
     """
@@ -197,16 +198,101 @@ def residual_chi2(p,data,options,dof=None):
     else:
         return np.dot(a,a)/dof
 
-def fit_w_sig_int(initial, data, options, sig_int_step=0.1, tol=1e-3):
+def vresiduals(p,zs,mus,dmus,d_ls,options):
+    """
+    Residual function for fitting when d_l is known (i.e. cosmo fit beforehand)
+    zs, mus, dmus should be lists of arrays of z, mu and dmu, respectively, for each subsample
+    d_ls should be list of arrays of pre-calculated luminosity distances;
+    Otherwise syntax similar to residuals; 
+    O_M, O_L, w, H_0 and dM must all be in options;
+    Can be used to determin offset
+    """
+    opt = deepcopy(options)
+    
+    if 'offsets' not in opt.keys():
+        opt['offsets'] = p[:len(zs)]
+        k = len(zs)
+    else:
+        k = 0
+
+    if opt['O_L'] is None:
+        opt['O_L'] = 1 - opt['O_M']
+
+    if 'v_mode' not in opt.keys():
+        opt['v_mode'] = _v_mode
+
+    if 'sig_int' not in opt.keys():
+        opt['sig_int'] = [0 for x in zs]   
+
+    v_comp_vals = []
+    if 'v_comp' in opt.keys():
+        for v_comps in opt['v_comp']:
+            v_comp_vals += [np.dot(v_comps,p[k:])]
+    else:
+        v_comp_vals += [np.zeros(len(x)) for x in zs]
+    if 'v_pec' not in opt.keys():
+        opt['v_pec'] = [np.zeros(len(x)) for x in zs]
+    if 'weights' not in opt.keys():
+        opt['weights'] = [np.ones(len(x)) for x in zs]   
+
+    H_rec = lambda x: 1 / np.sqrt(opt['O_M'] * (1+x)** 3 +
+                                  (1 - opt['O_M'] - opt['O_L']) * (1+x) ** 2 +
+                                  opt['O_L'] * (1+x)**(3*(1+opt['w'])))
+
+    d_ls_v = []
+    if opt['v_mode'] == 'none':
+        raise ValueError("v_mode 'none' not supported; use residuals instead")
+    elif opt['v_mode'] == 'bonvin':
+        for z, d_l, v_comp_val, v_pec in zip(zs, d_ls, v_comp_vals, opt['v_pec']):
+            d_ls_v.append(d_l - (1+z)**2 * H_rec(z) / opt['H_0'] * (v_comp_val+v_pec))
+    elif opt['v_mode'] == 'hui':
+        for z, d_l, v_comp_val, v_pec in zip(zs, d_ls, v_comp_vals, opt['v_pec']):
+            v_proj = v_comp_val + v_pec
+            d_ls_v.append(d_l * (1 + v_proj / _c) - (1+z)**2 * H_rec(z) / opt['H_0'] * v_proj)
+    else:
+        raise ValueError('Unknown v_mode: {}'.format(opt['v_mode']))
+
+    out=np.array([])
+    for d_l,mu,dmu,off,sig_int,ws in zip(d_ls_v, mus, dmus, opt['offsets'],
+                                           opt['sig_int'], opt['weights']):
+        out = np.append(out, ((mu + off + opt['dM'] - 5 * np.log10(d_l) - 25) /
+                              np.sqrt(dmu**2 + sig_int**2) * ws))
+    
+    out = np.array(out)
+    if len(out.shape) == 1: return out
+    else: return out.transpose()[0]
+
+def vresidual_chi2(p,zs,mus,dmus,d_ls,options,dof=None):
+    a = vresiduals(p,zs,mus,dmus,d_ls,options)
+    if dof is None:
+        return np.dot(a,a)
+    else:
+        return np.dot(a,a)/dof
+
+def fit_w_sig_int(initial, data, options, sig_int_step=0.1, tol=1e-3, fast=False):
+    """
+    fast won't work unless cosmo fit already
+    """
+    if fast:
+         z = [np.array([a[1] for a in b]) for b in data]
+         mu = [np.array([a[2] for a in b]) for b in data]
+         dmu = [np.array([a[3] for a in b]) for b in data]
+         d_ls = [np.array([d_l(a[1],**options) for a in b]) for b in data]
+
     dof = sum([len(a) for a in data]) - len(initial)
     sig_int = 0.
     options['sig_int'] = [sig_int for x in data]
     chi2 = 2
 
     # Check whether reduced chi^2 already < 1
-    fit = leastsq(residuals,initial,args=(data,options))
+    if fast:
+        fit = leastsq(vresiduals,initial,args=(z,mu,dmu,d_ls,options))
+        chi2 = vresidual_chi2(fit[0],z,mu,dmu,d_ls,options,dof=dof)
+    else:
+        fit = leastsq(residuals,initial,args=(data,options))
+        chi2 = residual_chi2(fit[0],data,options,dof=dof)
     initial = fit[0]
-    chi2 = residual_chi2(fit[0],data,options,dof=dof)
+    
     #print chi2, residual_chi2(fit[0],data,options)
     if chi2 < 1:
         #warnings.simplefilter('always', UserWarning)
@@ -217,17 +303,26 @@ def fit_w_sig_int(initial, data, options, sig_int_step=0.1, tol=1e-3):
     while chi2 > 1:
         sig_int += sig_int_step
         options['sig_int'] = [sig_int for x in data]
-        fit = leastsq(residuals,initial,args=(data,options))
+        if fast:
+            fit = leastsq(vresiduals,initial,args=(z,mu,dmu,d_ls,options))
+            chi2 = vresidual_chi2(fit[0],z,mu,dmu,d_ls,options,dof=dof)
+        else:
+            fit = leastsq(residuals,initial,args=(data,options))
+            chi2 = residual_chi2(fit[0],data,options,dof=dof)
         initial = fit[0]
-        chi2 = residual_chi2(fit[0],data,options,dof=dof)
         #print sig_int, chi2
 
     sig_range = [sig_int-sig_int_step,sig_int]
     #chi2 = chi2[-2:]
     sig_mid = np.mean(sig_range)
     options['sig_int'] = [sig_mid for x in data]
-    fit = leastsq(residuals,fit[0],args=(data,options))
-    chi2 = residual_chi2(fit[0],data,options,dof=dof)
+    if fast:
+        fit = leastsq(vresiduals,fit[0],args=(z,mu,dmu,d_ls,options))
+        chi2 = vresidual_chi2(fit[0],z,mu,dmu,d_ls,options,dof=dof)
+    else:
+        fit = leastsq(residuals,fit[0],args=(data,options))
+        chi2 = residual_chi2(fit[0],data,options,dof=dof)
+
     while np.abs(chi2 - 1) > tol:
         #print sig_range
         if chi2 > 1:
@@ -236,9 +331,13 @@ def fit_w_sig_int(initial, data, options, sig_int_step=0.1, tol=1e-3):
             sig_range[1] = sig_mid
         sig_mid = np.mean(sig_range)
         options['sig_int'] = [sig_mid for x in data]
-        fit = leastsq(residuals,fit[0],args=(data,options))
-        chi2 = residual_chi2(fit[0],data,options,dof=dof)
-    
+        if fast:
+            fit = leastsq(vresiduals,fit[0],args=(z,mu,dmu,d_ls,options))
+            chi2 = vresidual_chi2(fit[0],z,mu,dmu,d_ls,options,dof=dof)
+        else:
+            fit = leastsq(residuals,fit[0],args=(data,options))
+            chi2 = residual_chi2(fit[0],data,options,dof=dof)
+            
     #print chi2, residual_chi2(fit[0],data,options)
 
     return fit, options

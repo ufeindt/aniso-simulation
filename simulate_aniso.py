@@ -62,7 +62,7 @@ def _def_parser():
     parser.add_argument('-n','--number',default=100,type=int,
                         help='number of realization')
     parser.add_argument('-s','--signal-mode',default=0,type=int,choices=range(len(signal_modes)),
-                        help='signal mode: {}'.format('; '.join(signal_modes)))
+                        help='signal mode:\n {}'.format('\n'.join(signal_modes)))
     parser.add_argument('-p','--parameters',default=None,nargs='*',type=float,
                         help='non-default parameters for signal')
 
@@ -80,6 +80,11 @@ def _def_parser():
                         help='simulation redshift bins for non-flat distribution',type=float)
     parser.add_argument('--sim-zone-of-avoidance',default=None,nargs=1,
                         help='size of the ZoA for simulation in degrees',type=float)
+    parser.add_argument('--fit-cosmo',action='store_true',
+                        help='fit cosmology for simulated data before fitting anisotropy')
+    parser.add_argument('--determine-sig-int',action='store_true',
+                        help='redetermine sig_int when fitting cosmology for simulated data (requires --fit-cosmo)')
+    
 
     return parser
       
@@ -172,6 +177,9 @@ def _process_args(args):
     messages.append('Redshift pdf bins: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
                                                                  for val in args.sim_z_pdf_bins])))
 
+    if args.determine_sig_int and not args.fit_cosmo:
+        raise ValueError("--determine_sig_int requires --fit-cosmo")
+
     if args.verbosity:
         print '\n'.join(messages)    
     
@@ -189,7 +197,7 @@ def _make_outfile_name(args):
 
     return outfile
 
-def _simulate_aniso(num_sim,names,l,b,z,v,verbosity,add):
+def _simulate_aniso(num_sim,names,l,b,z,v,verbosity,add,**kwargs):
     if verbosity > 1:
         print
         print 'Running simulations.'
@@ -224,7 +232,7 @@ def _simulate_aniso(num_sim,names,l,b,z,v,verbosity,add):
     for k in xrange(num_sim):
         if verbosity > 2:
             print 'Realization {}'.format(k)
-        data, options = st.simulate_data(names,l,b,z,v=v,add=add)
+        data, options = st.simulate_data(names,l,b,z,v=v,add=add,**kwargs)
         for key in sorted(results.keys()):
             analysis = analysis_fcts[key](data,options)
             for skey,result in analysis.items():
@@ -263,9 +271,9 @@ def _save_results(results,outfile,arg_dict,verbosity=False):
         else:
             outfile = _get_conflict_file_name(outfile)
             if not checks[0]:
-                warnings.warn('conflicting versions; new results saved a {}'.format(outfile))
+                warnings.warn('conflicting versions; new results saved as {}'.format(outfile))
             else:
-                warnings.warn('conflicting results found; new results saved a {}'.format(outfile))
+                warnings.warn('conflicting results found; new results saved as {}'.format(outfile))
                 
 
     if new:
@@ -347,7 +355,10 @@ def _main():
         'parameters': args.parameters
     }
 
-    results = _simulate_aniso(args.number,names,l,b,z,v,verbosity=args.verbosity,add=add)
+    results = _simulate_aniso(args.number, names, l, b, z, v,
+                              verbosity=args.verbosity, add=add,
+                              fit_cosmo=args.fit_cosmo,
+                              determine_sig_int=args.determine_sig_int)
     
     arg_dict = vars(args)
     del arg_dict['number']
