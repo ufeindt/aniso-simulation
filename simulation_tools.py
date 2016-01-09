@@ -251,15 +251,15 @@ def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
 
         mu[k] += np.random.normal(0,np.sqrt(dmu[k]**2 + intrinsic_dispersion**2))
         
-    data = [zip(names,z,mu,dmu,l,b)]
     options = {'O_L':None,'w':-1,'dM':0,'H_0':H_0,'O_M':O_M}
+    d_ls = np.array([ct.d_l(a,**options) for a in z])
+    data = [zip(names,z,mu,dmu,l,b,d_ls)]
     if fit_cosmo:
         if determine_sig_int:
             fit, options = ct.fit_w_sig_int([0], data, options, fast=True)
         else:
             options['sig_int'] = [intrinsic_dispersion for x in data]
-            d_ls = [np.array([ct.d_l(a,**options) for a in z])]
-            fit = leastsq(ct.vresiduals, [0], args=([z], [mu], [dmu], d_ls, options))
+            fit = leastsq(ct.vresiduals, [0], args=([z], [mu], [dmu], [d_ls], options))
         
         options['offsets'] = fit[0]
     else:

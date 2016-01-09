@@ -36,7 +36,7 @@ def fit_dipole(data,opt):
     z = [np.array([a[1] for a in b]) for b in data]
     mu = [np.array([a[2] for a in b]) for b in data]
     dmu = [np.array([a[3] for a in b]) for b in data]
-    d_ls = [np.array([ct.d_l(a[1],**opt) for a in b]) for b in data]
+    d_ls = [np.array([a[6] for a in b]) for b in data]
 
     fit = leastsq(ct.vresiduals,np.zeros(3),args=(z,mu,dmu,d_ls,options),full_output=1)
 
@@ -72,7 +72,7 @@ def fit_dipole_shear(data,opt):
     z = [np.array([a[1] for a in b]) for b in data]
     mu = [np.array([a[2] for a in b]) for b in data]
     dmu = [np.array([a[3] for a in b]) for b in data]
-    d_ls = [np.array([ct.d_l(a[1],**opt) for a in b]) for b in data]
+    d_ls = [np.array([a[6] for a in b]) for b in data]
 
     fit = leastsq(ct.vresiduals,np.zeros(9),args=(z,mu,dmu,d_ls,options),full_output=1)
 

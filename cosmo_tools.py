@@ -277,7 +277,7 @@ def fit_w_sig_int(initial, data, options, sig_int_step=0.1, tol=1e-3, fast=False
          z = [np.array([a[1] for a in b]) for b in data]
          mu = [np.array([a[2] for a in b]) for b in data]
          dmu = [np.array([a[3] for a in b]) for b in data]
-         d_ls = [np.array([d_l(a[1],**options) for a in b]) for b in data]
+         d_ls = [np.array([a[6] for a in b]) for b in data]
 
     dof = sum([len(a) for a in data]) - len(initial)
     sig_int = 0.
