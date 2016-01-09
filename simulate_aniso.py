@@ -12,7 +12,7 @@ Note: The convention for spherical coordinates used here is
 Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 """
 
-__version__ = '0.2' 
+__version__ = '1.2' 
 
 import numpy as np
 import os
