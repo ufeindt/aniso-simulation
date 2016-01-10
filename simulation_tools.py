@@ -16,7 +16,7 @@ import numpy as np
 
 import cosmo_tools as ct
 import velocity_tools as vt
-from cosmo_tools import _d2r, _O_M, _H_0, _c
+from cosmo_tools import _d2r, _O_M, _H_0
 
 from scipy.optimize import leastsq
 
@@ -208,12 +208,15 @@ def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
 
     return z
          
-def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
+def simulate_data(names,l,b,z,v=None,d_l=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
                   intrinsic_dispersion=0.1,error_distribution=(0.1,0.02),
                   error_min=0.03,add=None,v_mode='hui',fit_cosmo=False,
-                  determine_sig_int=False):
+                  determine_sig_int=False,options=None):
     """
     """
+    if options is None:
+        options = {'O_L':None,'w':-1,'dM':0,'H_0':H_0,'O_M':O_M}
+
     if add is not None and add['number'] > 0:
         new_names = np.array(['add{:6.0f}'.format(k) for k in xrange(add['number'])])
         new_z = simulate_z_coverage(add['number'],add['z_range'],
@@ -221,12 +224,14 @@ def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
         new_RA, new_Dec = simulate_l_b_coverage(add['number'],add['ZoA'],
                                                add['ra_range'],add['dec_range'],'j2000')
         new_l, new_b = ct.radec2gcs(new_RA,new_Dec)
+        new_d_l = np.array([ct.d_l(a,**options) for a in new_z])
 
         z_filter = (new_z >= add['z_limits'][0]) & (new_z < add['z_limits'][1])
         names = np.concatenate((names,new_names[z_filter]))
         z = np.concatenate((z,new_z[z_filter]))
         l = np.concatenate((l,new_l[z_filter]))
         b = np.concatenate((b,new_b[z_filter]))
+        d_l = np.concatenate((d_l,new_d_l[z_filter]))
 
         if v is not None:
             new_v = get_peculiar_velocities(add['signal_mode'],add['parameters'],
@@ -251,15 +256,13 @@ def simulate_data(names,l,b,z,v=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
 
         mu[k] += np.random.normal(0,np.sqrt(dmu[k]**2 + intrinsic_dispersion**2))
         
-    options = {'O_L':None,'w':-1,'dM':0,'H_0':H_0,'O_M':O_M}
-    d_ls = np.array([ct.d_l(a,**options) for a in z])
-    data = [zip(names,z,mu,dmu,l,b,d_ls)]
+    data = [zip(names,z,mu,dmu,l,b,d_l)]
     if fit_cosmo:
         if determine_sig_int:
             fit, options = ct.fit_w_sig_int([0], data, options, fast=True)
         else:
             options['sig_int'] = [intrinsic_dispersion for x in data]
-            fit = leastsq(ct.vresiduals, [0], args=([z], [mu], [dmu], [d_ls], options))
+            fit = leastsq(ct.vresiduals, [0], args=(data, options))
         
         options['offsets'] = fit[0]
     else:

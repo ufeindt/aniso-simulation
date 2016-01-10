@@ -16,7 +16,6 @@ __version__ = '1.2'
 
 import numpy as np
 import os
-import sys
 import re 
 import warnings
 import cPickle
@@ -28,6 +27,8 @@ import analysis_tools as at
 import cosmo_tools as ct
 import simulation_tools as st
 import velocity_tools as vt
+
+from cosmo_tools import _O_M, _H_0
 
 signal_modes = ['0: no signal',
                 '1: dipole, 3 parameters (U_x,U_y,U_z)',
@@ -197,10 +198,14 @@ def _make_outfile_name(args):
 
     return outfile
 
-def _simulate_aniso(num_sim,names,l,b,z,v,verbosity,add,**kwargs):
+def _simulate_aniso(num_sim,names,l,b,z,v,d_l,verbosity,add,
+                    options=None,**kwargs):
     if verbosity > 1:
         print
         print 'Running simulations.'
+
+    if options is None:
+        options = {'O_L':None,'w':-1,'dM':0,'H_0':_H_0,'O_M':_O_M}
 
     results = {
         'dipole': {},
@@ -232,7 +237,7 @@ def _simulate_aniso(num_sim,names,l,b,z,v,verbosity,add,**kwargs):
     for k in xrange(num_sim):
         if verbosity > 2:
             print 'Realization {}'.format(k)
-        data, options = st.simulate_data(names,l,b,z,v=v,add=add,**kwargs)
+        data, options = st.simulate_data(names,l,b,z,v=v,add=add,d_l=d_l,**kwargs)
         for key in sorted(results.keys()):
             analysis = analysis_fcts[key](data,options)
             for skey,result in analysis.items():
@@ -320,10 +325,13 @@ def _main():
 
     outfile = _make_outfile_name(args)
 
+    options = {'O_L':None,'w':-1,'dM':0,'H_0':H_0,'O_M':O_M}
+
     if len(args.files) > 0:
         names, RA, Dec, z = st.load_from_files(*args.files,z_range=args.redshift)
         l, b = ct.radec2gcs(RA, Dec)        
         v = st.get_peculiar_velocities(args.signal_mode,args.parameters,l,b,z)
+        d_l = np.array([ct.d_l(a,**options) for a in z])
 
         if args.verbosity > 0:
             print 
@@ -337,7 +345,8 @@ def _main():
         l = np.array([])
         b = np.array([])
         v = np.array([])
-        
+        d_l = np.array([])
+
         if args.verbosity > 0:
             print 
             print 'No data loaded.'
@@ -355,7 +364,7 @@ def _main():
         'parameters': args.parameters
     }
 
-    results = _simulate_aniso(args.number, names, l, b, z, v,
+    results = _simulate_aniso(args.number, names, l, b, z, v, d_l,
                               verbosity=args.verbosity, add=add,
                               fit_cosmo=args.fit_cosmo,
                               determine_sig_int=args.determine_sig_int)
