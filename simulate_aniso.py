@@ -325,7 +325,7 @@ def _main():
 
     outfile = _make_outfile_name(args)
 
-    options = {'O_L':None,'w':-1,'dM':0,'H_0':H_0,'O_M':O_M}
+    options = {'O_L':None,'w':-1,'dM':0,'H_0':_H_0,'O_M':_O_M}
 
     if len(args.files) > 0:
         names, RA, Dec, z = st.load_from_files(*args.files,z_range=args.redshift)
