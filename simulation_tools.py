@@ -13,6 +13,7 @@ Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 """
 
 import numpy as np
+import warnings
 
 import cosmo_tools as ct
 import velocity_tools as vt
@@ -161,6 +162,29 @@ def simulate_l_b_coverage(Npoints,MW_exclusion=10,ra_range=(-180,180),dec_range=
             return ct.radec2gcs(ra,dec)
         else:
             return ra,dec
+
+def covered_area(MW_exclusion=10,ra_range=(-180,180),dec_range=(-90,90),
+                 MCpoints=1e6):
+    """Covered area in degree squared"""
+    
+    # Area in steradians without accounting for MW exclusion
+    area_sr = ((np.sin(dec_range[1] * _d2r) 
+                - np.sin(dec_range[0] * _d2r)) 
+               * (ra_range[1] - ra_range[0]) * _d2r)
+    
+    if MW_exclusion > 0:
+        if ra_range == [-180, 180] and dec_range == [-90, 90]:
+            area_sr -= 4 * np.pi * np.sin(MW_exclusion * _d2r) 
+        else:
+            # Make sure the warning is issued every time
+            warnings.simplefilter('always', UserWarning)
+            warnings.warn("Need to MC the MW exclusion. That could take a moment.")
+            l_, b_ = simulate_l_b_coverage(MCpoints,MW_exclusion=0,
+                                         ra_range=ra_range,dec_range=dec_range)
+            n = float(np.sum(np.abs(b_) > MW_exclusion))
+
+            area_sr *= n/MCpoints
+    return area_sr / _d2r ** 2
 
 def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
     """
