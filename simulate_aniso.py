@@ -47,8 +47,8 @@ parameter_default = [[],
                      example_dipole,
                      np.concatenate((example_dipole,example_shear)),
                      np.array([2.78]), # maybe wrong
-                     np.array([1.75,15.2])]
-
+                     np.array([1.078,12.32])]
+                     # np.array([1.75,15.2])] # thesis values
 def _def_parser():
     parser = ArgumentParser(description='Simulate random realizations of distance')
     parser.add_argument('files',type=str,nargs='*',help='coordinate files')
@@ -79,11 +79,12 @@ def _def_parser():
                         help='simulation pdf values for non-flat distribution (if --z-cdf-bins not stated, redshift range will be split uniformly)',type=float)
     parser.add_argument('--sim-z-pdf-bins',default=None,nargs='*',
                         help='simulation redshift bins for non-flat distribution',type=float)
+
     parser.add_argument('--sim-zone-of-avoidance',default=None,nargs=1,
                         help='size of the ZoA for simulation in degrees',type=float)
-    parser.add_argument('--fit-cosmo',action='store_true',
+    parser.add_argument('--no-cosmo-fit',action='store_true',
                         help='fit cosmology for simulated data before fitting anisotropy')
-    parser.add_argument('--determine-sig-int',action='store_true',
+    parser.add_argument('--no-determine-sig-int',action='store_true',
                         help='redetermine sig_int when fitting cosmology for simulated data (requires --fit-cosmo)')
     
 
@@ -366,8 +367,8 @@ def _main():
 
     results = _simulate_aniso(args.number, names, l, b, z, v, d_l,
                               verbosity=args.verbosity, add=add,
-                              fit_cosmo=args.fit_cosmo,
-                              determine_sig_int=args.determine_sig_int)
+                              fit_cosmo=(not args.no_cosmo_fit),
+                              determine_sig_int=(not args.no_determine_sig_int))
     
     arg_dict = vars(args)
     del arg_dict['number']
