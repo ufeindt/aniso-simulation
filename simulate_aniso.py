@@ -67,7 +67,7 @@ def _def_parser():
     parser.add_argument('-p','--parameters',default=None,nargs='*',type=float,
                         help='non-default parameters for signal')
 
-    parser.add_argument('--sim-number',default=0,type=int,
+    parser.add_argument('--sim-number',default=None,type=int,
                         help='number of additional SNe')
     parser.add_argument('--sim-redshift',default=None,nargs=2,
                         help='simulation redshift boundaries',type=float)
@@ -75,13 +75,22 @@ def _def_parser():
                         help='simulation RA range in degrees',type=float)
     parser.add_argument('--sim-dec-range',default=None,nargs=2,
                         help='simulation Dec range in degrees',type=float)
-    parser.add_argument('--sim-z-pdf',default=None,nargs='*',
-                        help='simulation pdf values for non-flat distribution (if --z-cdf-bins not stated, redshift range will be split uniformly)',type=float)
-    parser.add_argument('--sim-z-pdf-bins',default=None,nargs='*',
-                        help='simulation redshift bins for non-flat distribution',type=float)
-
     parser.add_argument('--sim-zone-of-avoidance',default=None,nargs=1,
                         help='size of the ZoA for simulation in degrees',type=float)
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--sim-snrate',default=3e-5,type=float,
+                       help='Volumetric supernova rate for simulation')
+    group.add_argument('--sim-z-pdf',default=None,nargs='*',
+                       help='simulation pdf values for non-flat distribution (if --z-pdf-bins not stated, redshift range will be split uniformly)',type=float)
+
+    parser.add_argument('--sim-time',default=365.25,nargs=1,type=float,
+                        help='observation time for sn distribution base on volumetric rate')
+    parser.add_argument('--sim-area',default=None,nargs=1,type=float,
+                        help='observed area for sn distribution base on volumetric rate')
+    parser.add_argument('--sim-z-pdf-bins',default=None,nargs='*',
+                        help='simulation redshift bins for non-flat distribution (requires --sim-z-pdf)',type=float)
+
     parser.add_argument('--no-cosmo-fit',action='store_true',
                         help='fit cosmology for simulated data before fitting anisotropy')
     parser.add_argument('--no-determine-sig-int',action='store_true',
@@ -90,7 +99,7 @@ def _def_parser():
 
     return parser
       
-def _process_args(args):
+def _process_args(args, parser):
     messages = ['Files:','\n'.join(args.files),'',
                 'Number of realizations: {}'.format(args.number)]
 
@@ -98,7 +107,7 @@ def _process_args(args):
         args.redshift = [0.015,0.1]
         messages.append('Redshift range: {:.3f} -- {:.3f} (default)'.format(*args.redshift))
     elif args.redshift[0] > args.redshift[1]:
-        raise ValueError('Invalid redshift range: {:.3f} -- {:.3f}'.format(*args.redshift))
+        raise parser.error('Invalid redshift range: {:.3f} -- {:.3f}'.format(*args.redshift))
     else:
         messages.append('Redshift range: {:.3f} -- {:.3f}'.format(*args.redshift))
 
@@ -112,72 +121,91 @@ def _process_args(args):
         os.makedirs(args.outdir)
 
     if args.signal_mode not in range(6):
-        raise ValueError('Unknown signal mode: {}'.format(args.signal_mode))
+        raise parser.error('Unknown signal mode: {}'.format(args.signal_mode))
     messages.append('Signal mode {}'.format(signal_modes[args.signal_mode]))
 
     if args.parameters is None:
         args.parameters = parameter_default[args.signal_mode]
     elif len(args.parameters) != len(parameter_default[args.signal_mode]):
-        raise ValueError('Wrong number of parameters for chosen signal mode.')
+        raise parser.error('Wrong number of parameters for chosen signal mode.')
     messages.append('Parameters: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
                                                           for val in args.parameters])))
 
-    messages.extend(['','Number of additional SNe: {}'.format(args.sim_number)])
-
     if args.sim_redshift is None:
-        args.sim_redshift = [0.015,0.1]
+        # args.sim_redshift = [0.015,0.1]
         messages.append('Redshift range: {:.3f} -- {:.3f} (default)'.format(*args.sim_redshift))
+        simulate = False
     elif args.sim_redshift[0] > args.sim_redshift[1]:
-        raise ValueError('Invalid simulation redshift range: {:.3f} -- {:.3f}'.format(*args.sim_redshift))
+        raise parser.error('Invalid simulation redshift range: {:.3f} -- {:.3f}'.format(*args.sim_redshift))
     else:
         messages.append('Redshift range: {:.3f} -- {:.3f}'.format(*args.sim_redshift))
+        simulate = True
 
     if args.sim_ra_range is None:
         args.sim_ra_range = [-180.,180.]
-        messages.append('RA range: {:.1f} deg -- {:.1f} deg (default)'.format(*args.sim_ra_range))
+        if simulate:
+            messages.append('RA range: {:.1f} deg -- {:.1f} deg (default)'.format(*args.sim_ra_range))
     elif (args.sim_ra_range[0] < -180 or args.sim_ra_range[1] > 180 
           or args.sim_ra_range[0] >  args.sim_ra_range[1]):
-        raise ValueError('Invalid simulation RA range: {:.1f} -- {:.1f}'.format(*args.sim_ra_range))
+        raise parser.error('Invalid simulation RA range: {:.1f} -- {:.1f}'.format(*args.sim_ra_range))
     else:
-        messages.append('RA range: {:.1f} deg -- {:.1f} deg'.format(*args.sim_ra_range))
+        if simulate:
+            messages.append('RA range: {:.1f} deg -- {:.1f} deg'.format(*args.sim_ra_range))
 
     if args.sim_dec_range is None:
         args.sim_dec_range = [-90.,90.]
-        messages.append('Dec range: {:.1f} deg -- {:.1f} deg (default)'.format(*args.sim_dec_range))
+        if simulate:
+            messages.append('Dec range: {:.1f} deg -- {:.1f} deg (default)'.format(*args.sim_dec_range))
     elif (args.sim_dec_range[0] < -90 or args.sim_dec_range[1] > 90 
           or args.sim_dec_range[0] >  args.sim_dec_range[1]):
-        raise ValueError('Invalid simulation Dec range: {:.1f} -- {:.1f}'.format(*args.sim_dec_range))
+        raise parser.error('Invalid simulation Dec range: {:.1f} -- {:.1f}'.format(*args.sim_dec_range))
     else:
-        messages.append('Dec range: {:.1f} deg -- {:.1f} deg'.format(*args.sim_dec_range))
+        if simulate:
+            messages.append('Dec range: {:.1f} deg -- {:.1f} deg'.format(*args.sim_dec_range))
 
     
     if args.sim_zone_of_avoidance is None:
         args.sim_zone_of_avoidance = 10.
-        messages.append('ZoA size: {:.1f} deg (default)'.format(args.sim_zone_of_avoidance))
+        if simulate:
+            messages.append('ZoA size: {:.1f} deg (default)'.format(args.sim_zone_of_avoidance))
     else:
-        messages.append('ZoA size: {:.1f} deg'.format(args.sim_zone_of_avoidance))
+        if simulate:
+            messages.append('ZoA size: {:.1f} deg'.format(args.sim_zone_of_avoidance))
 
-    if args.sim_z_pdf is None:
-        if args.sim_z_pdf_bins is None:
-            args.sim_z_pdf = np.ones(1)
-            args.sim_z_pdf_bins = np.array(args.sim_redshift)
-        else:
-            args.sim_z_pdf_bins = np.array(args.sim_z_pdf_bins)
-            args.sim_z_pdf = np.ones(len(args.sim_z_pdf_bins)-1)/(len(args.sim_z_pdf_bins)-1)         
-    else:
+        
+    # if args.sim_z_pdf is None:
+    #     if args.sim_z_pdf_bins is None:
+    #         args.sim_z_pdf = np.ones(1)
+    #         args.sim_z_pdf_bins = np.array(args.sim_redshift)
+    #     else:
+    #         args.sim_z_pdf_bins = np.array(args.sim_z_pdf_bins)
+    #         args.sim_z_pdf = np.ones(len(args.sim_z_pdf_bins)-1)/(len(args.sim_z_pdf_bins)-1)         
+    # else:
+    if args.sim_z_pdf is not None:
         args.sim_z_pdf = np.array(args.sim_z_pdf)/np.sum(np.array(args.sim_z_pdf))
         if args.sim_z_pdf_bins is None:
             args.sim_z_pdf_bins = np.linspace(args.sim_redshift[0],args.sim_redshift[1],len(args.sim_z_pdf)+1)
         elif (args.sim_z_pdf_bins[0] != args.sim_redshift[0] or args.sim_z_pdf_bins[-1] != args.sim_redshift[1]
               or True in [a>b for a,b in zip(args.sim_z_pdf_bins[:-1],args.sim_z_pdf_bins[1:])]):
-            raise ValueError('Invalid simulation redshift pdf bins')
+            raise parser.error('Invalid simulation redshift pdf bins')
         else:
             args.z_pdf_bins = np.array(args.sim_z_pdf_bins)
 
-    messages.append('Redshift pdf: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
-                                                           for val in args.sim_z_pdf])))
-    messages.append('Redshift pdf bins: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
-                                                                 for val in args.sim_z_pdf_bins])))
+        if simulate:
+            messages.append('Redshift pdf: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
+                                                                    for val in args.sim_z_pdf])))
+            messages.append('Redshift pdf bins: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
+                                                                     for val in args.sim_z_pdf_bins])))
+            messages.extend(['','Number of additional SNe: {}'.format(args.sim_number)])            
+    else:
+        if simulate:
+            messages.append('SN rate: {} Mpc^-3 yr^-1'.format(args.sim_snrate))
+            if args.sim_number is not None:
+                messages.extend(['','Number of additional SNe: {}'.format(args.sim_number)])
+            else:
+                messages.append('Observation time: {} days'.format(args.sim_time))
+                if args.sim_area is not None:
+                    messages.append('Observation area: {} square degrees'.format(args.sim_area))
 
     if args.verbosity:
         print '\n'.join(messages)    
@@ -319,7 +347,10 @@ def _main():
 
     parser = _def_parser()
     args = parser.parse_args()
-    args = _process_args(args)
+    # print args
+    # import sys
+    # sys.exit()
+    args = _process_args(args, parser)
 
     outfile = _make_outfile_name(args)
 
@@ -349,18 +380,32 @@ def _main():
             print 
             print 'No data loaded.'
 
-    add = {
-        'number': args.sim_number,
-        'z_range': args.sim_redshift,
-        'ra_range': args.sim_ra_range,
-        'dec_range': args.sim_dec_range,
-        'z_pdf': args.sim_z_pdf,
-        'z_pdf_bins': args.sim_z_pdf_bins,
-        'ZoA': args.sim_zone_of_avoidance,
-        'z_limits': args.redshift,
-        'signal_mode': args.signal_mode,
-        'parameters': args.parameters
-    }
+    if args.sim_redshift is not None: 
+        add = {
+            'number': args.sim_number,
+            'z_range': args.sim_redshift,
+            'ra_range': args.sim_ra_range,
+            'dec_range': args.sim_dec_range,
+            'snratefunc': (lambda z: args.sim_snrate),
+            'time': args.sim_time,
+            'z_pdf': args.sim_z_pdf,
+            'z_pdf_bins': args.sim_z_pdf_bins,
+            'ZoA': args.sim_zone_of_avoidance,
+            'z_limits': args.redshift,
+            'signal_mode': args.signal_mode,
+            'parameters': args.parameters
+        }
+
+        if args.sim_z_pdf is None and args.sim_area is None:
+            add['area'] = st.covered_area(add['ZoA'],add['ra_range'],add['dec_range'])
+            if args.verbosity > 0:
+                print 
+                print 'Covered area (MC estimate): %.2f square degrees'%add['area']
+                print 'To speed up the next run please provide this number using --sim-area.'
+        else:
+            add['area'] = args.sim_area
+    else:
+        add = None
 
     results = _simulate_aniso(args.number, names, l, b, z, v, d_l,
                               verbosity=args.verbosity, add=add,

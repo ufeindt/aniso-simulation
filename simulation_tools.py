@@ -15,11 +15,11 @@ Author: Ulrich Feindt (feindt@physik.hu-berlin.de)
 import numpy as np
 import warnings
 
+from scipy.optimize import leastsq
+
 import cosmo_tools as ct
 import velocity_tools as vt
 from cosmo_tools import _d2r, _O_M, _H_0
-
-from scipy.optimize import leastsq
 
 def load_from_files(*filenames,**kwargs):
     """
@@ -186,21 +186,32 @@ def covered_area(MW_exclusion=10,ra_range=(-180,180),dec_range=(-90,90),
             area_sr *= n/MCpoints
     return area_sr / _d2r ** 2
 
-def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
+def simulate_z_coverage(z_range,npoints=None,snratefunc=(lambda z: 3e-5),time=365.25,area=2e4,
+                        z_pdf=None,z_pdf_bins=None):
     """
 
     """
     if (len(z_range) != 2 or z_range[0] > z_range[1]):
         raise ValueError('Invalid z_range')
+
         
     if z_pdf is None:
-        if z_pdf_bins is None:
-            z_pdf = np.ones(1)
-            z_pdf_bins = np.array(z_range)
-            widths = np.array([z_range[1]-z_range[0]])
+        from sncosmo import zdist
+        from astropy.cosmology import FlatLambdaCDM
+
+        if npoints is None:
+            z = zdist(z_range[0], z_range[1], time, area, snratefunc,
+                      FlatLambdaCDM(H0=_H_0, Om0=_O_M))
+            z = np.array(list(z))
         else:
-            z_pdf_bins = np.array(z_pdf_bins)
-            z_pdf = np.ones(len(z_pdf_bins)-1)/(len(z_pdf_bins)-1)
+            # Create generator for huge member of redshifts but only draw up to npoints
+            # Settings should make a generator for several million redshifts
+            gen = zdist(z_range[0], z_range[1], 1e6, 42000, snratefunc,
+                      FlatLambdaCDM(H0=_H_0, Om0=_O_M))
+            z = []
+            for k in xrange(npoints):
+                z.append(gen.next())
+            z= np.array(z)
     else:
         if z_pdf_bins is None:
             z_pdf_bins = np.linspace(z_range[0],z_range[1],len(z_pdf)+1)
@@ -215,20 +226,20 @@ def simulate_z_coverage(NPoints,z_range,z_pdf=None,z_pdf_bins=None):
         else:
             z_pdf_bins = np.array(z_pdf_bins)
 
-    widths = z_pdf_bins[1:]-z_pdf_bins[:-1]
-    z_pdf = np.array(z_pdf,dtype=float)/np.sum(np.array(z_pdf*widths))
-    #print np.sum(z_pdf*widths)
-    #print z_pdf
+        widths = z_pdf_bins[1:]-z_pdf_bins[:-1]
+        z_pdf = np.array(z_pdf,dtype=float)/np.sum(np.array(z_pdf*widths))
+        #print np.sum(z_pdf*widths)
+        #print z_pdf
 
-    if len(z_pdf) > 1:
-        z_cdf = np.cumsum(z_pdf*widths)
-        val_uni = np.random.random(NPoints)
-        val_bins = np.array([np.where(z_cdf > val)[0][0] for val in val_uni])
-        val_rem = ((val_uni - z_cdf[val_bins-1])%1)/((z_cdf[val_bins]-z_cdf[val_bins-1])%1)
+        if len(z_pdf) > 1:
+            z_cdf = np.cumsum(z_pdf*widths)
+            val_uni = np.random.random(npoints)
+            val_bins = np.array([np.where(z_cdf > val)[0][0] for val in val_uni])
+            val_rem = ((val_uni - z_cdf[val_bins-1])%1)/((z_cdf[val_bins]-z_cdf[val_bins-1])%1)
 
-        z = z_pdf_bins[val_bins] + (z_pdf_bins[val_bins+1] - z_pdf_bins[val_bins]) * val_rem
-    else:
-        z = np.random.random(NPoints) * (z_range[1]-z_range[0]) + z_range[0]
+            z = z_pdf_bins[val_bins] + (z_pdf_bins[val_bins+1] - z_pdf_bins[val_bins]) * val_rem
+        else:
+            z = np.random.random(npoints) * (z_range[1]-z_range[0]) + z_range[0]
 
     return z
          
@@ -241,10 +252,13 @@ def simulate_data(names,l,b,z,v=None,d_l=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
     if options is None:
         options = {'O_L':None,'w':-1,'dM':0,'H_0':H_0,'O_M':O_M}
 
-    if add is not None and add['number'] > 0:
-        new_names = np.array(['add{:6.0f}'.format(k) for k in xrange(add['number'])])
-        new_z = simulate_z_coverage(add['number'],add['z_range'],
+    if add is not None:
+        new_z = simulate_z_coverage(add['z_range'],add['number'],
+                                    add['snratefunc'],add['area'],add['time'],
                                     add['z_pdf'],add['z_pdf_bins'])
+        add['number'] = len(new_z)
+
+        new_names = np.array(['add{:6.0f}'.format(k) for k in xrange(add['number'])])
         new_RA, new_Dec = simulate_l_b_coverage(add['number'],add['ZoA'],
                                                add['ra_range'],add['dec_range'],'j2000')
         new_l, new_b = ct.radec2gcs(new_RA,new_Dec)
