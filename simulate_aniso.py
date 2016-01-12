@@ -179,9 +179,6 @@ def _process_args(args):
     messages.append('Redshift pdf bins: [ {} ]'.format(' '.join(['{:.3f}'.format(val) 
                                                                  for val in args.sim_z_pdf_bins])))
 
-    if args.determine_sig_int and not args.fit_cosmo:
-        raise ValueError("--determine_sig_int requires --fit-cosmo")
-
     if args.verbosity:
         print '\n'.join(messages)    
     
