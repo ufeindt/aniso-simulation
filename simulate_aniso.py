@@ -133,12 +133,12 @@ def _process_args(args, parser):
 
     if args.sim_redshift is None:
         # args.sim_redshift = [0.015,0.1]
-        messages.append('Redshift range: {:.3f} -- {:.3f} (default)'.format(*args.sim_redshift))
+        messages.append('Simulation redshift range: {:.3f} -- {:.3f} (default)'.format(*args.sim_redshift))
         simulate = False
     elif args.sim_redshift[0] > args.sim_redshift[1]:
         raise parser.error('Invalid simulation redshift range: {:.3f} -- {:.3f}'.format(*args.sim_redshift))
     else:
-        messages.append('Redshift range: {:.3f} -- {:.3f}'.format(*args.sim_redshift))
+        messages.append('Simulation redshift range: {:.3f} -- {:.3f}'.format(*args.sim_redshift))
         simulate = True
 
     if args.sim_ra_range is None:
@@ -172,15 +172,6 @@ def _process_args(args, parser):
         if simulate:
             messages.append('ZoA size: {:.1f} deg'.format(args.sim_zone_of_avoidance))
 
-        
-    # if args.sim_z_pdf is None:
-    #     if args.sim_z_pdf_bins is None:
-    #         args.sim_z_pdf = np.ones(1)
-    #         args.sim_z_pdf_bins = np.array(args.sim_redshift)
-    #     else:
-    #         args.sim_z_pdf_bins = np.array(args.sim_z_pdf_bins)
-    #         args.sim_z_pdf = np.ones(len(args.sim_z_pdf_bins)-1)/(len(args.sim_z_pdf_bins)-1)         
-    # else:
     if args.sim_z_pdf is not None:
         args.sim_z_pdf = np.array(args.sim_z_pdf)/np.sum(np.array(args.sim_z_pdf))
         if args.sim_z_pdf_bins is None:
@@ -206,6 +197,12 @@ def _process_args(args, parser):
                 messages.append('Observation time: {} days'.format(args.sim_time))
                 if args.sim_area is not None:
                     messages.append('Observation area: {} square degrees'.format(args.sim_area))
+                else:
+                    args.sim_area = st.covered_area(args.sim_zone_of_avoidance,
+                                                    args.sim_ra_range,
+                                                    args.sim_dec_range)
+                    messages.append('Observation area: {} square degrees (estimated)'.format(args.sim_area))
+                    messages.append('To speed up the next run please provide this number using --sim-area.')
 
     if args.verbosity:
         print '\n'.join(messages)    
@@ -388,6 +385,7 @@ def _main():
             'dec_range': args.sim_dec_range,
             'snratefunc': (lambda z: args.sim_snrate),
             'time': args.sim_time,
+            'ares': args.sim_area,
             'z_pdf': args.sim_z_pdf,
             'z_pdf_bins': args.sim_z_pdf_bins,
             'ZoA': args.sim_zone_of_avoidance,
@@ -395,15 +393,6 @@ def _main():
             'signal_mode': args.signal_mode,
             'parameters': args.parameters
         }
-
-        if args.sim_z_pdf is None and args.sim_area is None:
-            add['area'] = st.covered_area(add['ZoA'],add['ra_range'],add['dec_range'])
-            if args.verbosity > 0:
-                print 
-                print 'Covered area (MC estimate): %.2f square degrees'%add['area']
-                print 'To speed up the next run please provide this number using --sim-area.'
-        else:
-            add['area'] = args.sim_area
     else:
         add = None
 
