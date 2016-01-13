@@ -133,7 +133,7 @@ def _process_args(args, parser):
 
     if args.sim_redshift is None:
         # args.sim_redshift = [0.015,0.1]
-        messages.append('Simulation redshift range: {:.3f} -- {:.3f} (default)'.format(*args.sim_redshift))
+        messages.append('No additional data will be simulated.'.format(*args.sim_redshift))
         simulate = False
     elif args.sim_redshift[0] > args.sim_redshift[1]:
         raise parser.error('Invalid simulation redshift range: {:.3f} -- {:.3f}'.format(*args.sim_redshift))
