@@ -322,5 +322,7 @@ def get_peculiar_velocities(mode,p,l,b,z):
               4: (lambda p_,l_,b_,z_:
                   np.array(map(lambda x1,x2,x3: vt.convert_cartesian([1,x2,x3]).
                                dot(vt.v_attractor(x1,x2,x3,p_)),z_,l_,b_)))}
+    if mode == 5:
+        mode = 2
 
     return v_fcts[mode](p,l,b,z)
