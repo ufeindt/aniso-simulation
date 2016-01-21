@@ -47,8 +47,10 @@ parameter_default = [[],
                      example_dipole,
                      np.concatenate((example_dipole,example_shear)),
                      np.array([2.78]), # maybe wrong
-                     np.array([1.078,12.32])]
+                     np.array([1.078,12.32]),
                      # np.array([1.75,15.2])] # thesis values
+                     np.concatenate((example_dipole,example_shear/3))]
+
 def _def_parser():
     parser = ArgumentParser(description='Simulate random realizations of distance')
     parser.add_argument('files',type=str,nargs='*',help='coordinate files')
