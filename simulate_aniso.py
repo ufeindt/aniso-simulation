@@ -34,7 +34,8 @@ signal_modes = ['0: no signal',
                 '1: dipole, 3 parameters (U_x,U_y,U_z)',
                 '2: dipole + shear, 9 parameters (U_x,U_y,U_z,U_xx,U_yy,U_zz,U_xy,U_xz,U_yz)',
                 '3: SSC, 1 parameter (overdensity)',
-                '4: SSC + SGW, 2 parameters (overdensities)']
+                '4: SSC + SGW, 2 parameters (overdensities)',
+                '5: copy of mode 2 but default shear divided by 3']
 
 example_dipole = vt.convert_cartesian([300,300,30])
 rhs = np.array(vt.make_bf_rhs(example_dipole))
