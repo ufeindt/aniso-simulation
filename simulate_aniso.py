@@ -388,7 +388,7 @@ def _main():
             'dec_range': args.sim_dec_range,
             'snratefunc': (lambda z: args.sim_snrate),
             'time': args.sim_time,
-            'ares': args.sim_area,
+            'area': args.sim_area,
             'z_pdf': args.sim_z_pdf,
             'z_pdf_bins': args.sim_z_pdf_bins,
             'ZoA': args.sim_zone_of_avoidance,

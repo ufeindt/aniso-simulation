@@ -68,8 +68,9 @@ def _process_args(args, parser):
     if args.ra_range is None:
         args.ra_range = [-180.,180.]
         messages.append('RA range: {:.1f} deg -- {:.1f} deg (default)'.format(*args.ra_range))
-    elif (args.ra_range[0] < -180 or args.ra_range[1] > 180 
-          or args.ra_range[0] >  args.ra_range[1]):
+    elif (args.ra_range[0] < -180 or args.ra_range[1] > 360 
+          or args.ra_range[0] >  args.ra_range[1]
+          or args.ra_range[1] - args.ra_range[0] > 360):
         parser.error('Invalid RA range: {:.1f} -- {:.1f}'.format(*args.ra_range))
     else:
         messages.append('RA range: {:.1f} deg -- {:.1f} deg'.format(*args.ra_range))
@@ -167,7 +168,7 @@ def _main():
                                        args.ra_range,args.dec_range,'j2000')
 
 
-    names = np.array(['{}{}'.format(len(z),k) for k in range(len(RA))])
+    names = np.array(['{}{}'.format(args.name,k) for k in range(len(RA))])
 
     if args.number is None and args.verbose:
         print
