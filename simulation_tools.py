@@ -246,7 +246,7 @@ def simulate_z_coverage(z_range,npoints=None,snratefunc=(lambda z: 3e-5),time=36
 def simulate_data(names,l,b,z,v=None,d_l=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
                   intrinsic_dispersion=0.1,error_distribution=(0.1,0.02),
                   error_min=0.03,add=None,v_mode='hui',fit_cosmo=False,
-                  determine_sig_int=False,options=None):
+                  determine_sig_int=False,options=None,dmu=None):
     """
     """
     if options is None:
@@ -286,7 +286,13 @@ def simulate_data(names,l,b,z,v=None,d_l=None,O_M=_O_M,H_0=_H_0,#v_dispersion=0,
     mu = np.array([ct.mu(z_,O_M=O_M,H_0=H_0,v_mon=v_,v_mode=v_mode) 
                    for z_,v_ in zip(z,v)])
     
-    dmu = np.random.normal(error_distribution[0],error_distribution[1],len(z))
+    if dmu is None:
+        dmu = np.random.normal(error_distribution[0],error_distribution[1],
+                               len(z))
+    elif add is not None:
+        new_dmu = np.random.normal(error_distribution[0],error_distribution[1],
+                                   len(new_z))
+        dmu = np.concatenate((dmu,new_dmu[z_filter]))
 
     for k in xrange(len(z)):
         while dmu[k] <= error_min:

@@ -98,7 +98,9 @@ def _def_parser():
                         help='fit cosmology for simulated data before fitting anisotropy')
     parser.add_argument('--no-determine-sig-int',action='store_true',
                         help='redetermine sig_int when fitting cosmology for simulated data (requires --fit-cosmo)')
-    
+
+    parser.add_argument('--load-uncertainties',action='store_true',
+                        help='load uncertainties for coordinates from files')
 
     return parser
       
@@ -357,7 +359,17 @@ def _main():
     options = {'O_L':None,'w':-1,'dM':0,'H_0':_H_0,'O_M':_O_M}
 
     if len(args.files) > 0:
-        names, RA, Dec, z = st.load_from_files(*args.files,z_range=args.redshift)
+        if args.load_uncertainties:
+            keys = ['Name','RA','Dec','z', 'mu_err']
+            dtypes = [object,float,float,float,float]
+            names, RA, Dec, z, dmu = st.load_from_files(*args.files,
+                                                        z_range=args.redshift,
+                                                        keys=keys,dtypes=dtypes)
+        else:
+            names, RA, Dec, z = st.load_from_files(*args.files,
+                                                   z_range=args.redshift)
+            dmu = None
+
         l, b = ct.radec2gcs(RA, Dec)        
         v = st.get_peculiar_velocities(args.signal_mode,args.parameters,l,b,z)
         d_l = np.array([ct.d_l(a,**options) for a in z])
@@ -375,6 +387,7 @@ def _main():
         b = np.array([])
         v = np.array([])
         d_l = np.array([])
+        dmu = None
 
         if args.verbosity > 0:
             print 
@@ -402,7 +415,8 @@ def _main():
     results = _simulate_aniso(args.number, names, l, b, z, v, d_l,
                               verbosity=args.verbosity, add=add,
                               fit_cosmo=(not args.no_cosmo_fit),
-                              determine_sig_int=(not args.no_determine_sig_int))
+                              determine_sig_int=(not args.no_determine_sig_int),
+                              dmu=dmu)
     
     arg_dict = vars(args)
     del arg_dict['number']
