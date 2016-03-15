@@ -87,6 +87,9 @@ def _def_parser():
     group.add_argument('--sim-z-pdf',default=None,nargs='*',
                        help='simulation pdf values for non-flat distribution (if --z-pdf-bins not stated, redshift range will be split uniformly)',type=float)
 
+    group.add_argument('--sim-int-disp',default=0.1,type=float,
+                       help='intrinsic dispersion added to simulatied mu')
+
     parser.add_argument('--sim-time',default=365.25,nargs=1,type=float,
                         help='observation time for sn distribution base on volumetric rate')
     parser.add_argument('--sim-area',default=None,nargs=1,type=float,
@@ -416,7 +419,7 @@ def _main():
                               verbosity=args.verbosity, add=add,
                               fit_cosmo=(not args.no_cosmo_fit),
                               determine_sig_int=(not args.no_determine_sig_int),
-                              dmu=dmu)
+                              dmu=dmu,intrinsic_dispersion=args.sim_int_disp)
     
     arg_dict = vars(args)
     del arg_dict['number']
