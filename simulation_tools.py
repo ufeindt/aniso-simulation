@@ -45,7 +45,7 @@ def load_from_files(*filenames,**kwargs):
     z_range = kwargs.pop('z_range',None)
     z_key = kwargs.pop('z_key',None)
     keys = kwargs.pop('keys',['Name','RA','Dec','z'])
-    dtypes = kwargs.pop('dtype',[object,float,float,float])
+    dtypes = kwargs.pop('dtypes',[object,float,float,float])
     case_sensitive = kwargs.pop('case_sensitive',False)
     comments = kwargs.pop('comments','#')
     delimiter = kwargs.pop('delimeter',None)
