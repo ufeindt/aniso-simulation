@@ -364,7 +364,7 @@ def _main():
             dtypes = [object,float,float,float,float]
             names, RA, Dec, z, dmu = st.load_from_files(*args.files,
                                                         z_range=args.redshift,
-                                                        keys=keys,dtypes=dtypes)
+                                                        keys=keys,dtype=dtypes)
         else:
             names, RA, Dec, z = st.load_from_files(*args.files,
                                                    z_range=args.redshift)
