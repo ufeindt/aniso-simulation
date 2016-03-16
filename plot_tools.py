@@ -504,7 +504,7 @@ def plot_results(result,prefixes=None,names=None,cumulative=False,figsize=(8,6),
             plt.plot([z_val,z_val],[-1e6,1e6],'k--',scaley=False)
     
     if legend is not None:
-        plt.legend(loc=legend)
+        plt.legend(loc=legend, framealpha=1)
         
     plt.xlim(z_range)
         
